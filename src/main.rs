@@ -1,10 +1,11 @@
 use std::marker::PhantomData;
 
 use bytes::BufMut;
+use get_type_description::GetTypeDescription;
 use inject::Inject;
 use request::Request;
 use serialization::{json::Json, raw::{Raw, IntoRaw}};
-use server::Server;
+use server::{Server, TypeDescription};
 
 mod fake_variaddic;
 
@@ -14,6 +15,7 @@ pub mod serialization {
 }
 pub mod dyn_fn;
 pub mod get_from_request;
+pub mod get_type_description;
 pub mod inject;
 pub mod put_into_response;
 pub mod request;
@@ -30,6 +32,20 @@ struct MyContext {
 struct MyComplexStruct {
     a: u32,
     b: u32,
+}
+
+impl GetTypeDescription for MyComplexStruct{
+    fn get_type_description() -> server::TypeDescription {
+        TypeDescription {
+            encoding: None,
+            kind: String::from("object"),
+            name: Vec::new(),
+            description: Some([
+                    (String::from("a"), u32::get_type_description()),
+                    (String::from("b"), u32::get_type_description()),
+                ].into()),
+        }
+    }
 }
 
 async fn prepare_request() -> Raw<(Raw<u32>, Raw<u32>, Raw<(Raw<u32>, Json<MyComplexStruct>)>)> {
@@ -74,5 +90,7 @@ async fn main() {
     });
     
     rx.await.unwrap();
+    
+    dbg!(server.get_description());
     
 }

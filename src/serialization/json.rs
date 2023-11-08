@@ -4,7 +4,10 @@ use crate::{put_into_response::PutIntoResponse, response::Response, inject::Inje
 
 pub struct Json<T>(pub T);
 
-impl<T> TypeEncoding for Json<T> {}
+impl<T> TypeEncoding for Json<T> {
+    type EncodedType = T;
+    const NAME: &'static str = "json";
+}
 
 impl<T> Deref for Json<T> {
     type Target = T;

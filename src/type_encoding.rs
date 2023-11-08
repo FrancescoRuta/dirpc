@@ -1,1 +1,4 @@
-pub trait TypeEncoding {}
+pub trait TypeEncoding {
+    type EncodedType;
+    const NAME: &'static str;
+}

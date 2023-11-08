@@ -7,7 +7,7 @@ use crate::{dyn_fn::{DynFunction, IntoDynFunction}, request::Request, response::
 
 pub struct Server<'ctx, Context> {
     context: &'ctx Context,
-    functions: Vec<(Vec<String>, DynFunction<'ctx, Context>)>,
+    functions: Vec<(Vec<String>, FunctionDescription, DynFunction<'ctx, Context>)>,
     consts: Vec<(Vec<String>, ConstDescription)>,
 }
 
@@ -28,7 +28,7 @@ where
     where
         F: IntoDynFunction<'ctx, Context, PhantomGeneric>,
     {
-        self.functions.push((vec![name.into()], IntoDynFunction::into_dyn_fn(function)))
+        self.functions.push((vec![name.into()], F::get_function_description(), IntoDynFunction::into_dyn_fn(function)))
     }
     
     pub fn add_const(&mut self, name: impl Into<String>, value: ConstDescription) {
@@ -38,9 +38,9 @@ where
     pub fn add_namespace(&mut self, name: impl Into<String>, namespace: ServerNamespace<'ctx, Context>) {
         let name = name.into();
         self.functions.reserve(namespace.functions.len());
-        for (mut path, function) in namespace.functions {
+        for (mut path, description, function) in namespace.functions {
             path.push(name.clone());
-            self.functions.push((path, function))
+            self.functions.push((path, description, function))
         }
         self.consts.reserve(namespace.consts.len());
         for (mut path, value) in namespace.consts {
@@ -50,7 +50,11 @@ where
     }
     
     pub fn get_description(&self) -> ServerDescription {
-        todo!()
+        ServerDescription {
+            consts: HashMap::new(),
+            functions: self.functions.iter().map(|(path, desc, _)| (path.clone(), desc.clone())).collect(),
+            types: HashMap::new(),
+        }
     }
     
     pub fn call<Fut>(&self, request: Request, send_response: impl FnOnce(Vec<Response>) -> Fut + Send + 'static)
@@ -67,7 +71,7 @@ where
             if req_data.len() < size { return }
             let data = req_data.slice(..size);
             req_data.advance(size);
-            futures.push((self.functions[index].1)(self.context, Request { conn_id, data }));
+            futures.push((self.functions[index].2)(self.context, Request { conn_id, data }));
         }
         tokio::spawn(async move {
             let mut results = Vec::with_capacity(futures.len());
@@ -87,7 +91,7 @@ where
 }
 
 pub struct ServerNamespace<'ctx, Context> {
-    functions: Vec<(Vec<String>, DynFunction<'ctx, Context>)>,
+    functions: Vec<(Vec<String>, FunctionDescription, DynFunction<'ctx, Context>)>,
     consts: Vec<(Vec<String>, ConstDescription)>,
 }
 
@@ -98,7 +102,7 @@ impl<'ctx, Context> ServerNamespace<'ctx, Context> {
     where
         F: IntoDynFunction<'ctx, Context, PhantomGeneric>,
     {
-        self.functions.push((vec![name.into()], IntoDynFunction::into_dyn_fn(function)))
+        self.functions.push((vec![name.into()], F::get_function_description(), IntoDynFunction::into_dyn_fn(function)))
     }
     
     pub fn add_const(&mut self, name: impl Into<String>, value: ConstDescription) {
@@ -108,9 +112,9 @@ impl<'ctx, Context> ServerNamespace<'ctx, Context> {
     pub fn add_namespace(&mut self, name: impl Into<String>, namespace: ServerNamespace<'ctx, Context>) {
         let name = name.into();
         self.functions.reserve(namespace.functions.len());
-        for (mut path, function) in namespace.functions {
+        for (mut path, description, function) in namespace.functions {
             path.push(name.clone());
-            self.functions.push((path, function))
+            self.functions.push((path, description, function))
         }
         self.consts.reserve(namespace.consts.len());
         for (mut path, value) in namespace.consts {
@@ -124,23 +128,23 @@ impl<'ctx, Context> ServerNamespace<'ctx, Context> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerDescription {
-    types: HashMap<Vec<String>, TypeDescription>,
-    functions: HashMap<Vec<String>, FunctionDescription>,
-    consts: HashMap<Vec<String>, ConstDescription>,
+    pub types: HashMap<Vec<String>, TypeDescription>,
+    pub functions: HashMap<Vec<String>, FunctionDescription>,
+    pub consts: HashMap<Vec<String>, ConstDescription>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TypeDescription {
-    encoding: Option<String>,
-    kind: String,
-    name: Vec<String>,
-    description: Option<HashMap<String, TypeDescription>>,
+    pub encoding: Option<String>,
+    pub kind: String,
+    pub name: Vec<String>,
+    pub description: Option<HashMap<String, TypeDescription>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionDescription {
-    args_types: Vec<Vec<String>>,
-    return_type: Vec<String>,
+    pub args_types: Vec<TypeDescription>,
+    pub return_type: TypeDescription,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

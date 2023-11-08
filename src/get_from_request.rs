@@ -1,4 +1,4 @@
-use crate::{inject::Inject, request::Request};
+use crate::{inject::Inject, request::Request, server::TypeDescription, get_type_description::GetTypeDescription};
 
 pub trait GetFromRequest where Self: Sized {
     fn get_from_request(request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>>;
@@ -6,8 +6,11 @@ pub trait GetFromRequest where Self: Sized {
 
 impl<'ctx, Context, T> Inject<'ctx, Context> for T
 where
-    T: GetFromRequest
+    T: GetFromRequest + GetTypeDescription,
 {
+    fn get_type_description() -> Option<TypeDescription> {
+        Some(<T as GetTypeDescription>::get_type_description())
+    }
     fn inject(_ctx: &'ctx Context, request: &mut crate::request::Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
         T::get_from_request(request)
     }

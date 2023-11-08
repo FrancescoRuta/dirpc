@@ -4,7 +4,10 @@ use bytes::Buf;
 use crate::{put_into_response::PutIntoResponse, response::Response, request::Request, get_from_request::GetFromRequest, for_all_tuples, type_encoding::TypeEncoding};
 
 pub struct Raw<T>(pub T);
-impl<T> TypeEncoding for Raw<T> {}
+impl<T> TypeEncoding for Raw<T> {
+    type EncodedType = T;
+    const NAME: &'static str = "raw";
+}
 
 impl<T> Deref for Raw<T> {
     type Target = T;
@@ -31,6 +34,7 @@ impl<T: TypeEncoding> IntoRaw for T {
         self
     }
 }
+
 impl IntoRaw for i32 {
     type Output = Raw<i32>;
     fn into_raw(self) -> Self::Output {
