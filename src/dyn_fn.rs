@@ -1,6 +1,6 @@
 use crate::{for_all_functions, io_bytes::{SerializeToBytes, SerializationHelper}, request::Request};
 
-pub type DynFunction<'ctx, Context, RequestState> = Box<dyn Fn(&'ctx Context, Request<RequestState>) -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<Vec<bytes::Bytes>>> + Send>> + Send>;
+pub type DynFunction<'ctx, Context, RequestState> = Box<dyn Fn(&'ctx Context, Request<RequestState>) -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<Vec<bytes::Bytes>>> + Send>> + Send + Sync>;
 
 pub trait IntoDynFunction<'ctx, Context, RequestState, PhantomGeneric> {
     fn into_dyn_fn(self) -> DynFunction<'ctx, Context, RequestState>;
@@ -10,7 +10,7 @@ impl<'ctx, Context, RequestState, Fut, R, F> IntoDynFunction<'ctx, Context, Requ
 where
     Fut: std::future::Future<Output = R> + Send + 'static,
     R: SerializeToBytes,
-    F: FnOnce() -> Fut + Clone + Send + 'static,
+    F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
 {
     fn into_dyn_fn(self) -> DynFunction<'ctx, Context, RequestState> {
         Box::new(move |_ctx, _req| {
@@ -31,7 +31,7 @@ macro_rules! dyn_fn_impl {
             $($t: $crate::inject::Inject<'ctx, Context, RequestState> + Send + 'static,)*
             Fut: std::future::Future<Output = R> + Send + 'static,
             R: SerializeToBytes,
-            F: FnOnce($($t,)*) -> Fut + Clone + Send + 'static,
+            F: FnOnce($($t,)*) -> Fut + Clone + Send + Sync + 'static,
         {
             fn into_dyn_fn(self) -> DynFunction<'ctx, Context, RequestState> {
                 Box::new(move |ctx, mut req| {
