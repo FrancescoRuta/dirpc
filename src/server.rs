@@ -53,10 +53,7 @@ where
     //    }
     //}
     
-    pub fn call<Fut>(&self, state: RequestState, mut req_data: bytes::Bytes, send_response: impl FnOnce(Vec<Vec<bytes::Bytes>>) -> Fut + Send + 'static)
-    where
-        Fut: std::future::Future<Output = ()> + Send,
-    {
+    pub async fn call<Fut: std::future::Future<Output = ()> + Send>(&self, state: RequestState, mut req_data: bytes::Bytes, send_response: impl FnOnce(Vec<Vec<bytes::Bytes>>) -> Fut + Send + 'static) {
         let mut futures = Vec::with_capacity(16);
         while req_data.len() > 0 && futures.len() < 16 {
             if req_data.len() < 8 { return }
@@ -67,7 +64,7 @@ where
             req_data.advance(size);
             futures.push((self.functions[index].1)(self.context, Request { state: state.clone(), data }));
         }
-        tokio::spawn(async move {
+        async move {
             let mut results = Vec::with_capacity(futures.len());
             for future in futures {
                 match future.await {
@@ -79,7 +76,7 @@ where
                 }
             }
             send_response(results).await;
-        });
+        }.await;
     }
     
 }

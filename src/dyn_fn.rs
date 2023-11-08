@@ -1,6 +1,6 @@
 use crate::{for_all_functions, io_bytes::{SerializeToBytes, SerializationHelper}, request::Request};
 
-pub type DynFunction<'ctx, Context, RequestState> = Box<dyn Fn(&'ctx Context, Request<RequestState>) -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<Vec<bytes::Bytes>>> + Send>>>;
+pub type DynFunction<'ctx, Context, RequestState> = Box<dyn Fn(&'ctx Context, Request<RequestState>) -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<Vec<bytes::Bytes>>> + Send>> + Send>;
 
 pub trait IntoDynFunction<'ctx, Context, RequestState, PhantomGeneric> {
     fn into_dyn_fn(self) -> DynFunction<'ctx, Context, RequestState>;
