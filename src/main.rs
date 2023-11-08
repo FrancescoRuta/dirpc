@@ -1,7 +1,8 @@
-use serialization::json::Json;
+use serialization::{json::Json, raw::Raw};
 
 pub mod serialization {
     pub mod json;
+    pub mod raw;
 }
 pub mod description;
 mod dyn_fn;
@@ -32,6 +33,11 @@ async fn execute_request(arg0: bytes::Bytes, Json(arg1): Json<MyComplexStruct>) 
     println!("arg0 = {arg0}; arg1 = {arg1:?};")
 }
 
+async fn test_vec(Raw(arg0): Raw<Vec<String>>) -> Raw<Vec<u32>> {
+    arg0.iter().for_each(|str| println!("STRING FROM VEC {str}"));
+    Raw(arg0.iter().map(|s| s.len() as u32).collect())
+}
+
 struct Connection<T>(String, std::marker::PhantomData<T>);
 
 impl<T> inject::Inject<'_, MyContext, u32> for Connection<T> {
@@ -46,6 +52,7 @@ async fn main() {
     let mut server = server::Server::new(&ctx);
     server.add_function("prepare_request", prepare_request);
     server.add_function("execute_request", execute_request);
+    server.add_function("test_vec", test_vec);
     
     let (tx, rx) = tokio::sync::oneshot::channel();
     
@@ -59,6 +66,7 @@ async fn main() {
         let mut req = request_builder::RequestBuilder::new();
         println!("OK");
         req.push_call(1, <(bytes::Bytes, bytes::Bytes) as io_bytes::DeserializeFromBytes>::deserialize_from_bytes(&mut result.freeze()).unwrap()).unwrap();
+        req.push_call(2, Raw(vec!["str1", "str2", "str3"])).unwrap();
         tx.send(req.into_request().pop().unwrap()).unwrap();
     });
     
