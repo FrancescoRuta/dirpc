@@ -53,13 +53,19 @@ where
     //    }
     //}
     
-    pub async fn call<Fut: std::future::Future<Output = ()> + Send>(&self, state: RequestState, mut req_data: bytes::Bytes, send_response: impl FnOnce(Vec<Vec<bytes::Bytes>>) -> Fut + Send + 'static) {
+    pub fn call<Fut: std::future::Future<Output = ()> + Send + Sync>(&self, state: RequestState, mut req_data: bytes::Bytes, send_response: impl FnOnce(Vec<Vec<bytes::Bytes>>) -> Fut + Send + Sync + 'static) -> impl std::future::Future<Output = ()> + Send + Sync + 'static {
         let mut futures = Vec::with_capacity(16);
         while req_data.len() > 0 && futures.len() < 16 {
-            if req_data.len() < 8 { return }
+            if req_data.len() < 8 {
+                futures.clear();
+                break;
+            }
             let index = req_data.get_u32() as usize;
             let size = req_data.get_u32() as usize;
-            if req_data.len() < size { return }
+            if req_data.len() < size {
+                futures.clear();
+                break;
+            }
             let data = req_data.slice(..size);
             req_data.advance(size);
             futures.push((self.functions[index].1)(self.context, Request { state: state.clone(), data }));
@@ -76,7 +82,7 @@ where
                 }
             }
             send_response(results).await;
-        }.await;
+        }
     }
     
 }
