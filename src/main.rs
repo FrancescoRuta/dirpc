@@ -1,27 +1,16 @@
-use std::marker::PhantomData;
-
-use bytes::BufMut;
-use get_type_description::GetTypeDescription;
-use inject::Inject;
-use request::Request;
-use serialization::{json::Json, raw::{Raw, IntoRaw}};
-use server::{Server, TypeDescription};
-
-mod fake_variaddic;
+use serialization::json::Json;
 
 pub mod serialization {
     pub mod json;
-    pub mod raw;
 }
-pub mod dyn_fn;
-pub mod get_from_request;
-pub mod get_type_description;
+pub mod description;
+mod dyn_fn;
+mod fake_variaddic;
 pub mod inject;
-pub mod put_into_response;
+pub mod io_bytes;
+pub mod request_builder;
 pub mod request;
-pub mod response;
 pub mod server;
-pub mod type_encoding;
 
 
 struct MyContext {
@@ -34,61 +23,54 @@ struct MyComplexStruct {
     b: u32,
 }
 
-impl GetTypeDescription for MyComplexStruct{
-    fn get_type_description() -> server::TypeDescription {
-        TypeDescription {
-            encoding: None,
-            kind: String::from("object"),
-            name: Vec::new(),
-            description: Some([
-                    (String::from("a"), u32::get_type_description()),
-                    (String::from("b"), u32::get_type_description()),
-                ].into()),
-        }
-    }
+async fn prepare_request() -> (bytes::Bytes, Json<MyComplexStruct>) {
+    (bytes::Bytes::from_static(b"TEST"), Json(MyComplexStruct { a: 1, b: 0, }))
 }
 
-async fn prepare_request() -> Raw<(Raw<u32>, Raw<u32>, Raw<(Raw<u32>, Json<MyComplexStruct>)>)> {
-    (1u32, 21u32, (3u32, Json(MyComplexStruct { a: 1, b: 0, }))).into_raw()
-}
-
-async fn execute_request(Raw(arg0): Raw<u32>, Json(arg1): Json<MyComplexStruct>) {
+async fn execute_request(arg0: bytes::Bytes, Json(arg1): Json<MyComplexStruct>) {
+    let arg0 = std::str::from_utf8(&arg0).unwrap();
     println!("arg0 = {arg0}; arg1 = {arg1:?};")
 }
 
 struct Connection<T>(String, std::marker::PhantomData<T>);
 
-impl<T> Inject<'_, MyContext> for Connection<T> {
-    fn inject(ctx: &'_ MyContext, _request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
-        Ok(Connection(ctx.connection.clone(), PhantomData::default()))
+impl<T> inject::Inject<'_, MyContext, u32> for Connection<T> {
+    fn inject(ctx: &'_ MyContext, _request: &mut request::Request<u32>) -> anyhow::Result<Self> {
+        Ok(Connection(ctx.connection.clone(), std::marker::PhantomData::default()))
     }
 }
 
 #[tokio::main]
 async fn main() {
     let ctx = MyContext { connection: "test connection".into() };
-    let mut server = Server::new(&ctx);
+    let mut server = server::Server::new(&ctx);
     server.add_function("prepare_request", prepare_request);
     server.add_function("execute_request", execute_request);
     
     let (tx, rx) = tokio::sync::oneshot::channel();
     
-    server.call(Request { conn_id: 0, data: bytes::Bytes::from_static(&[0, 0, 0, 0, 0, 0, 0, 0]), }, |res| async move {
-        let mut result = bytes::BytesMut::with_capacity(res.iter().map(|r| r.data.iter().map(|b| b.len()).sum::<usize>()).sum());
-        res.into_iter().for_each(|r| r.data.into_iter().for_each(|b| result.put(b)));
-        println!("TEST, {}", result.len());
-        tx.send(result.freeze()).unwrap();
+    let mut req = request_builder::RequestBuilder::new();
+    
+    req.push_call(0, ()).unwrap();
+    
+    server.call(0, req.into_request().pop().unwrap(), |res| async move {
+        let mut result = bytes::BytesMut::with_capacity(res.iter().map(|r| r.iter().map(|b| b.len()).sum::<usize>()).sum());
+        res.into_iter().for_each(|r| r.into_iter().for_each(|b| bytes::BufMut::put(&mut result, b)));
+        let mut req = request_builder::RequestBuilder::new();
+        println!("OK");
+        req.push_call(1, <(bytes::Bytes, bytes::Bytes) as io_bytes::DeserializeFromBytes>::deserialize_from_bytes(&mut result.freeze()).unwrap()).unwrap();
+        tx.send(req.into_request().pop().unwrap()).unwrap();
     });
     
     let request = rx.await.unwrap();
     let (tx, rx) = tokio::sync::oneshot::channel();
     
-    server.call(Request { conn_id: 0, data: request, }, |_| async move {
+    server.call(0, request, |_| async move {
         tx.send(()).unwrap();
     });
     
     rx.await.unwrap();
     
-    dbg!(server.get_description());
+    //dbg!(server.get_description());
     
 }
