@@ -19,11 +19,11 @@ impl<T: GetTypeDescription, U: TypeEncoding<EncodedType = T>> GetTypeDescription
     fn get_type_description() -> TypeDescription {
         let mut description = T::get_type_description();
         if description.encoding.is_none() {
-            description.encoding = None;
+            description.encoding = Some(String::from(U::NAME));
             description
         } else {
             TypeDescription {
-                encoding: None,
+                encoding: Some(String::from(U::NAME)),
                 kind: String::from("container"),
                 name: Vec::new(),
                 description: Some([(String::from("content"), description)].into()),

@@ -4,9 +4,15 @@ use bytes::Buf;
 use crate::{put_into_response::PutIntoResponse, response::Response, request::Request, get_from_request::GetFromRequest, for_all_tuples, type_encoding::TypeEncoding};
 
 pub struct Raw<T>(pub T);
-impl<T> TypeEncoding for Raw<T> {
+impl<T> TypeEncoding for Raw<T>
+where
+    Self: GetFromRequest,
+{
     type EncodedType = T;
     const NAME: &'static str = "raw";
+    fn get_from_request(request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
+        <Self as GetFromRequest>::get_from_request(request)
+    }
 }
 
 impl<T> Deref for Raw<T> {
@@ -178,7 +184,7 @@ impl PutIntoResponse for Raw<bytes::BytesMut> {
 
 impl GetFromRequest for Raw<bytes::BytesMut> {
     fn get_from_request(request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
-        Ok(Raw(bytes::BytesMut::from(&*Raw::<bytes::Bytes>::get_from_request(request)?.0)))
+        Ok(Raw(bytes::BytesMut::from(&*<Raw<bytes::Bytes> as GetFromRequest>::get_from_request(request)?.0)))
     }
 }
 
@@ -190,7 +196,7 @@ impl PutIntoResponse for Raw<Vec<u8>> {
 
 impl GetFromRequest for Raw<Vec<u8>> {
     fn get_from_request(request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
-        Ok(Raw(Vec::from(&*Raw::<bytes::Bytes>::get_from_request(request)?.0)))
+        Ok(Raw(Vec::from(&*<Raw<bytes::Bytes> as GetFromRequest>::get_from_request(request)?.0)))
     }
 }
 
@@ -218,7 +224,7 @@ impl PutIntoResponse for Raw<String> {
 
 impl GetFromRequest for Raw<String> {
     fn get_from_request(request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
-        Ok(Raw(String::from_utf8(Vec::from(&*Raw::<bytes::Bytes>::get_from_request(request)?.0))?))
+        Ok(Raw(String::from_utf8(Vec::from(&*<Raw<bytes::Bytes> as GetFromRequest>::get_from_request(request)?.0))?))
     }
 }
 

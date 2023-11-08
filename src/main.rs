@@ -66,8 +66,6 @@ impl<T> Inject<'_, MyContext> for Connection<T> {
 
 #[tokio::main]
 async fn main() {
-    
-    
     let ctx = MyContext { connection: "test connection".into() };
     let mut server = Server::new(&ctx);
     server.add_function("prepare_request", prepare_request);

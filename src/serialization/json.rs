@@ -1,12 +1,22 @@
 use std::ops::{DerefMut, Deref};
 
-use crate::{put_into_response::PutIntoResponse, response::Response, inject::Inject, request::Request, type_encoding::TypeEncoding};
+use crate::{put_into_response::PutIntoResponse, response::Response, request::Request, type_encoding::TypeEncoding, get_type_description::GetTypeDescription, get_from_request::GetFromRequest};
 
 pub struct Json<T>(pub T);
 
-impl<T> TypeEncoding for Json<T> {
+impl<T> TypeEncoding for Json<T>
+where
+    T: for<'de> serde::Deserialize<'de> + GetTypeDescription,
+{
     type EncodedType = T;
     const NAME: &'static str = "json";
+    fn get_from_request(request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
+        use bytes::Buf;
+        let size = request.data.get_u32() as usize;
+        let result = serde_json::from_slice(&request.data[..size]);
+        request.data.advance(size);
+        Ok(Json(result?))
+    }
 }
 
 impl<T> Deref for Json<T> {
@@ -53,15 +63,11 @@ impl<T> PutIntoResponse for Json<T> where T: serde::Serialize {
     }
 }
 
-impl<'ctx, Context, T> Inject<'ctx, Context> for Json<T>
+impl<T> GetFromRequest for Json<T>
 where
-    T: for<'de> serde::Deserialize<'de>,
+    T: for<'de> serde::Deserialize<'de> + GetTypeDescription,
 {
-    fn inject(_ctx: &'ctx Context, request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
-        use bytes::Buf;
-        let size = request.data.get_u32() as usize;
-        let result = serde_json::from_slice(&request.data[..size]);
-        request.data.advance(size);
-        Ok(Json(result?))
+    fn get_from_request(request: &mut Request) -> Result<Self, Box<dyn std::error::Error + Send + Sync + 'static>> {
+        <Json<T> as TypeEncoding>::get_from_request(request)
     }
 }
