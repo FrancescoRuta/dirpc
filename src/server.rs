@@ -2,18 +2,18 @@ use bytes::Buf;
 
 use crate::{dyn_fn::{DynFunction, IntoDynFunction}, request::Request};
 
-pub struct Server<'ctx, Context, RequestState> {
-    context: &'ctx Context,
-    functions: Vec<(Vec<String>, DynFunction<'ctx, Context, RequestState>)>,
+pub struct Server<Context, RequestState> {
+    context: Context,
+    functions: Vec<(Vec<String>, DynFunction<Context, RequestState>)>,
 }
 
-impl<'ctx, Context, RequestState> Server<'ctx, Context, RequestState>
+impl<Context, RequestState> Server<Context, RequestState>
 where
     Context: Sync,
     RequestState: Clone,
 {
     
-    pub fn new(context: &'ctx Context) -> Self {
+    pub fn new(context: Context) -> Self {
         Self {
             context,
             functions: Vec::new(),
@@ -22,7 +22,7 @@ where
     
     pub fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, function: F)
     where
-        F: IntoDynFunction<'ctx, Context, RequestState, PhantomGeneric>,
+        F: IntoDynFunction<Context, RequestState, PhantomGeneric>,
     {
         self.functions.push((vec![name.into()], IntoDynFunction::into_dyn_fn(function)))
     }
@@ -31,7 +31,7 @@ where
     //    self.consts.push((vec![name.into()], value))
     //}
     //
-    //pub fn add_namespace(&mut self, name: impl Into<String>, namespace: ServerNamespace<'ctx, Context>) {
+    //pub fn add_namespace(&mut self, name: impl Into<String>, namespace: ServerNamespace<Context>) {
     //    let name = name.into();
     //    self.functions.reserve(namespace.functions.len());
     //    for (mut path, description, function) in namespace.functions {
@@ -68,7 +68,7 @@ where
             }
             let data = req_data.slice(..size);
             req_data.advance(size);
-            futures.push((self.functions[index].1)(self.context, Request { state: state.clone(), data }));
+            futures.push((self.functions[index].1)(&self.context, Request { state: state.clone(), data }));
         }
         async move {
             let mut results = Vec::with_capacity(futures.len());
@@ -87,17 +87,17 @@ where
     
 }
 
-//pub struct ServerNamespace<'ctx, Context> {
-//    functions: Vec<(Vec<String>, FunctionDescription, DynFunction<'ctx, Context>)>,
+//pub struct ServerNamespace<Context> {
+//    functions: Vec<(Vec<String>, FunctionDescription, DynFunction<Context>)>,
 //    consts: Vec<(Vec<String>, ConstDescription)>,
 //}
 //
-//impl<'ctx, Context> ServerNamespace<'ctx, Context> {
+//impl<Context> ServerNamespace<Context> {
 //    
 //    
 //    pub fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, function: F)
 //    where
-//        F: IntoDynFunction<'ctx, Context, PhantomGeneric>,
+//        F: IntoDynFunction<Context, PhantomGeneric>,
 //    {
 //        self.functions.push((vec![name.into()], F::get_function_description(), IntoDynFunction::into_dyn_fn(function)))
 //    }
@@ -106,7 +106,7 @@ where
 //        self.consts.push((vec![name.into()], value))
 //    }
 //    
-//    pub fn add_namespace(&mut self, name: impl Into<String>, namespace: ServerNamespace<'ctx, Context>) {
+//    pub fn add_namespace(&mut self, name: impl Into<String>, namespace: ServerNamespace<Context>) {
 //        let name = name.into();
 //        self.functions.reserve(namespace.functions.len());
 //        for (mut path, description, function) in namespace.functions {
