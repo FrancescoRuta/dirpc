@@ -28,7 +28,7 @@ where
     #[inline]
     fn deserialize_from_bytes(data: &mut bytes::Bytes) -> anyhow::Result<Self> {
         let size = u32::deserialize_from_bytes(data)? as usize;
-        if size != SIZE { anyhow::bail!("Deserialization error.") }
+        if size != SIZE { anyhow::bail!("Deserialization error: expected {} bytes, but only {} found", size, data.len()); }
         let mut result: std::mem::MaybeUninit<[T; SIZE]> = std::mem::MaybeUninit::uninit();
         for i in 0..(size as isize) {
             unsafe { (result.as_mut_ptr() as *mut T).offset(i).write(T::deserialize_from_bytes(data)?); }
