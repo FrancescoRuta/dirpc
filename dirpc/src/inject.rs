@@ -1,4 +1,4 @@
-use crate::{request::Request, io_bytes::DeserializeFromBytes};
+use crate::{request::Request, base_types::DeserializeFromBytes};
 
 pub trait Inject<Context, RequestState> where Self: Sized {
     fn inject(ctx: &Context, request: &mut Request<RequestState>) -> anyhow::Result<Self>;

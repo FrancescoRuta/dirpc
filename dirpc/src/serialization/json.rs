@@ -1,4 +1,4 @@
-use crate::io_bytes::{SerializeToBytes, DeserializeFromBytes, SerializationHelper};
+use crate::base_types::{SerializeToBytes, DeserializeFromBytes, SerializationHelper};
 
 pub struct Json<T>(pub T);
 

@@ -1,4 +1,4 @@
-use crate::io_bytes::{SerializeToBytes, SerializationHelper};
+use crate::base_types::{SerializeToBytes, SerializationHelper};
 
 pub struct RequestBuilder {
     res: SerializationHelper,
