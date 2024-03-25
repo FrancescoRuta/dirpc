@@ -42,7 +42,7 @@ macro_rules! ser_de_number {
                     if data.len() >= std::mem::size_of::<Self>() {
                         Ok(bytes::Buf::$get_method(data))
                     } else {
-                        Err(anyhow::anyhow!("Deserialization error."))
+                        Err(anyhow::anyhow!("Deserialization error: expected {} bytes, but only {} found", std::mem::size_of::<Self>(), data.len()))
                     }
                 }
             }
@@ -151,7 +151,7 @@ impl DeserializeFromBytes for bool {
         match u8::deserialize_from_bytes(data)? {
             0 => Ok(false),
             1 => Ok(true),
-            _ => Err(anyhow::anyhow!("Deserialization error.")),
+            v => Err(anyhow::anyhow!("Deserialization error: expected the value to be 1 or 0, but {v} was found.")),
         }
     }
 }
@@ -213,7 +213,7 @@ where
         match u8::deserialize_from_bytes(data)? {
             0 => Ok(Err(DeserializeFromBytes::deserialize_from_bytes(data)?)),
             1 => Ok(Ok(DeserializeFromBytes::deserialize_from_bytes(data)?)),
-            _ => Err(anyhow::anyhow!("Deserialization error.")),
+            v => Err(anyhow::anyhow!("Deserialization error: expected the value to be 1 or 0, but {v} was found.")),
         }
     }
 }
@@ -288,7 +288,7 @@ where
         match u8::deserialize_from_bytes(data)? {
             0 => Ok(None),
             1 => Ok(Some(DeserializeFromBytes::deserialize_from_bytes(data)?)),
-            _ => Err(anyhow::anyhow!("Deserialization error.")),
+            v => Err(anyhow::anyhow!("Deserialization error: expected the value to be 1 or 0, but {v} was found.")),
         }
     }
 }
@@ -343,7 +343,7 @@ impl DeserializeFromBytes for bytes::Bytes {
     #[inline]
     fn deserialize_from_bytes(data: &mut bytes::Bytes) -> anyhow::Result<Self> {
         let size = u32::deserialize_from_bytes(data)? as usize;
-        if size > data.len() { anyhow::bail!("Deserialization error."); }
+        if size > data.len() { anyhow::bail!("Deserialization error: expected {} bytes, but only {} found", size, data.len()); }
         let result = data.slice(..size);
         data.advance(size);
         Ok(result)
@@ -437,7 +437,7 @@ impl DeserializeFromBytes for bytes::BytesMut {
     #[inline]
     fn deserialize_from_bytes(data: &mut bytes::Bytes) -> anyhow::Result<Self> {
         let size = u32::deserialize_from_bytes(data)? as usize;
-        if size > data.len() { anyhow::bail!("Deserialization error."); }
+        if size > data.len() { anyhow::bail!("Deserialization error: expected {} bytes, but only {} found", size, data.len()); }
         let mut result = bytes::BytesMut::with_capacity(size);
         bytes::BufMut::put(&mut result, &data[..size]);
         data.advance(size);
@@ -478,7 +478,7 @@ impl<const SIZE: usize> DeserializeFromBytes for [u8; SIZE] {
     #[inline]
     fn deserialize_from_bytes(data: &mut bytes::Bytes) -> anyhow::Result<Self> {
         let size = u32::deserialize_from_bytes(data)? as usize;
-        if size > data.len() { anyhow::bail!("Deserialization error."); }
+        if size > data.len() { anyhow::bail!("Deserialization error: expected {} bytes, but only {} found", size, data.len()); }
         let result = &data[..size];
         let result = result.try_into()?;
         data.advance(size);
