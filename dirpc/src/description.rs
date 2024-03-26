@@ -39,7 +39,8 @@ pub enum TypeInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TypeDescription {
-    pub path: Vec<String>,
+    pub module_path: String,
+    pub name: String,
     pub typeinfo: TypeInfo,
 }
 

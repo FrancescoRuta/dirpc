@@ -8,28 +8,27 @@ pub fn get(input: proc_macro::TokenStream) -> syn::Result<proc_macro::TokenStrea
         syn::Fields::Named(fields) => {
             let mut fields = fields.named.into_iter().map(|f| f.ident.unwrap()).map(|f| (f.to_string(), f)).collect::<Vec<_>>();
             fields.sort_by(|(a, _), (b, _)| a.cmp(b));
-            let fields1 = fields.iter().map(|(_, f)| quote! { dirpc::DeserializeFromBytes::serialize_to_bytes(self.#f, serialization_helper)?; });
+            let self_fields = fields.iter().map(|(_, f)| f);
+            let fields = fields.iter().map(|(_, f)| quote! { let #f = dirpc::DeserializeFromBytes::deserialize_from_bytes(data)?; });
             quote! {
                 impl dirpc::DeserializeFromBytes for #name {
                     #[inline]
-                    fn serialize_to_bytes(self, serialization_helper: &mut dirpc::SerializationHelper) -> dirpc::anyhow::Result<()> {
-                        #(#fields1)*
-                        Ok(())
+                    fn deserialize_from_bytes(data: &mut bytes::Bytes) -> anyhow::Result<Self> {
+                        #(#fields)*
+                        Ok(Self {#(#self_fields),*})
                     }
                 }
             }.into()
         }
         syn::Fields::Unnamed(fields) => {
-            let fields1 = fields.unnamed.iter().enumerate().map(|(i, _)| {
-                let i = syn::Index::from(i);
-                quote! { dirpc::DeserializeFromBytes::serialize_to_bytes(self.#i, serialization_helper)?; }
+            let fields = fields.unnamed.iter().map(|_| {
+                quote! { dirpc::DeserializeFromBytes::deserialize_from_bytes(data)? }
             });
             quote! {
                 impl dirpc::DeserializeFromBytes for #name {
                     #[inline]
-                    fn serialize_to_bytes(self, serialization_helper: &mut dirpc::SerializationHelper) -> dirpc::anyhow::Result<()> {
-                        #(#fields1)*
-                        Ok(())
+                    fn deserialize_from_bytes(data: &mut bytes::Bytes) -> anyhow::Result<Self> {
+                        Ok(Self(#(#fields),*))
                     }
                 }
             }.into()
@@ -38,8 +37,8 @@ pub fn get(input: proc_macro::TokenStream) -> syn::Result<proc_macro::TokenStrea
             quote! {
                 impl dirpc::DeserializeFromBytes for #name {
                     #[inline]
-                    fn serialize_to_bytes(self, _serialization_helper: &mut dirpc::SerializationHelper) -> dirpc::anyhow::Result<()> {
-                        Ok(())
+                    fn deserialize_from_bytes(data: &mut bytes::Bytes) -> anyhow::Result<Self> {
+                        Ok(Self)
                     }
                 }
             }.into()

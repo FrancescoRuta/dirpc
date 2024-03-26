@@ -56,7 +56,8 @@ macro_rules! get_type_description_number {
             impl GetTypeDescription for $t0 {
                 fn get_type_description() -> TypeDescription {
                     TypeDescription {
-                        path: vec![],
+                        module_path: String::new(),
+                        name: String::new(),
                         typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::$t1),
                     }
                 }
@@ -64,7 +65,8 @@ macro_rules! get_type_description_number {
             impl GetTypeDescription for &$t0 {
                 fn get_type_description() -> TypeDescription {
                     TypeDescription {
-                        path: vec![],
+                        module_path: String::new(),
+                        name: String::new(),
                         typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::$t1),
                     }
                 }
@@ -114,7 +116,8 @@ impl DeserializeFromBytes for () {
 impl GetTypeDescription for () {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::Void),
         }
     }
@@ -129,7 +132,8 @@ impl SerializeToBytes for &() {
 impl GetTypeDescription for &() {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::Void),
         }
     }
@@ -158,7 +162,8 @@ impl DeserializeFromBytes for bool {
 impl GetTypeDescription for bool {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::Bool),
         }
     }
@@ -177,7 +182,8 @@ impl SerializeToBytes for &bool {
 impl GetTypeDescription for &bool {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::Bool),
         }
     }
@@ -224,7 +230,8 @@ where
 {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::Result(Box::new(T::get_type_description())),
         }
     }
@@ -258,7 +265,8 @@ where
 {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::Result(Box::new(T::get_type_description())),
         }
     }
@@ -298,7 +306,8 @@ where
 {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::Option(Box::new(T::get_type_description())),
         }
     }
@@ -325,7 +334,8 @@ where
 {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::Option(Box::new(T::get_type_description())),
         }
     }
@@ -352,7 +362,8 @@ impl DeserializeFromBytes for bytes::Bytes {
 impl GetTypeDescription for bytes::Bytes {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::ByteArray),
         }
     }
@@ -369,7 +380,8 @@ impl SerializeToBytes for &bytes::Bytes {
 impl GetTypeDescription for &bytes::Bytes {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::ByteArray),
         }
     }
@@ -391,7 +403,8 @@ impl DeserializeFromBytes for String {
 impl GetTypeDescription for String {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::String),
         }
     }
@@ -406,7 +419,8 @@ impl SerializeToBytes for &String {
 impl GetTypeDescription for &String {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::String),
         }
     }
@@ -421,7 +435,8 @@ impl SerializeToBytes for &str {
 impl GetTypeDescription for &str {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::String),
         }
     }
@@ -447,7 +462,8 @@ impl DeserializeFromBytes for bytes::BytesMut {
 impl GetTypeDescription for bytes::BytesMut {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::ByteArray),
         }
     }
@@ -462,7 +478,8 @@ impl SerializeToBytes for &[u8] {
 impl GetTypeDescription for &[u8] {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::ByteArray),
         }
     }
@@ -488,7 +505,8 @@ impl<const SIZE: usize> DeserializeFromBytes for [u8; SIZE] {
 impl<const SIZE: usize> GetTypeDescription for [u8; SIZE] {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::ByteArray),
         }
     }
@@ -503,7 +521,8 @@ impl<const SIZE: usize> SerializeToBytes for &[u8; SIZE] {
 impl<const SIZE: usize> GetTypeDescription for &[u8; SIZE] {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::BaseType(crate::description::BaseTypeDescription::ByteArray),
         }
     }
@@ -536,7 +555,8 @@ macro_rules! ser_de_tuple {
         {
             fn get_type_description() -> TypeDescription {
                 TypeDescription {
-                    path: vec![],
+                    module_path: String::new(),
+                    name: String::new(),
                     typeinfo: TypeInfo::Tuple(vec![$( $t::get_type_description(), )*]),
                 }
             }
@@ -581,7 +601,8 @@ where
 {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::Array(Box::new(T::get_type_description())),
         }
     }
@@ -608,7 +629,8 @@ where
 {
     fn get_type_description() -> TypeDescription {
         TypeDescription {
-            path: vec![],
+            module_path: String::new(),
+            name: String::new(),
             typeinfo: TypeInfo::Array(Box::new(T::get_type_description())),
         }
     }
