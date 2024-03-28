@@ -1,14 +1,14 @@
 use crate::base_types::{SerializeToBytes, DeserializeFromBytes, SerializationHelper};
 
-pub struct Raw<T>(pub T);
+pub struct RawSerializer<T>(pub T);
 
-impl<T> From<T> for Raw<T> {
+impl<T> From<T> for RawSerializer<T> {
     fn from(value: T) -> Self {
         Self(value)
     }
 }
 
-impl<const SIZE: usize, T> SerializeToBytes for Raw<[T; SIZE]>
+impl<const SIZE: usize, T> SerializeToBytes for RawSerializer<[T; SIZE]>
 where
     T: SerializeToBytes,
 {
@@ -21,7 +21,7 @@ where
         Ok(())
     }
 }
-impl<const SIZE: usize, T> DeserializeFromBytes for Raw<[T; SIZE]>
+impl<const SIZE: usize, T> DeserializeFromBytes for RawSerializer<[T; SIZE]>
 where
     T: DeserializeFromBytes,
 {
@@ -33,11 +33,11 @@ where
         for i in 0..(size as isize) {
             unsafe { (result.as_mut_ptr() as *mut T).offset(i).write(T::deserialize_from_bytes(data)?); }
         }
-        Ok(Raw(unsafe { result.assume_init() }))
+        Ok(RawSerializer(unsafe { result.assume_init() }))
     }
 }
 
-impl<'a, const SIZE: usize, T> SerializeToBytes for Raw<&'a [T; SIZE]>
+impl<'a, const SIZE: usize, T> SerializeToBytes for RawSerializer<&'a [T; SIZE]>
 where
     &'a T: SerializeToBytes,
 {
@@ -51,7 +51,7 @@ where
     }
 }
 
-impl<'a, T> SerializeToBytes for Raw<&'a [T]>
+impl<'a, T> SerializeToBytes for RawSerializer<&'a [T]>
 where
     &'a T: SerializeToBytes,
 {
@@ -65,7 +65,7 @@ where
     }
 }
 
-impl<T> SerializeToBytes for Raw<Vec<T>>
+impl<T> SerializeToBytes for RawSerializer<Vec<T>>
 where
     T: SerializeToBytes,
 {
@@ -78,7 +78,7 @@ where
         Ok(())
     }
 }
-impl<T> DeserializeFromBytes for Raw<Vec<T>>
+impl<T> DeserializeFromBytes for RawSerializer<Vec<T>>
 where
     T: DeserializeFromBytes,
 {
@@ -89,6 +89,6 @@ where
         for _ in 0..size {
             result.push(T::deserialize_from_bytes(data)?);
         }
-        Ok(Raw(result))
+        Ok(RawSerializer(result))
     }
 }

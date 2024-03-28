@@ -2,6 +2,11 @@ pub mod serialization {
     pub mod json;
     pub mod raw;
 }
+
+pub mod export_types {
+    pub mod typescript;
+}
+
 pub mod description;
 pub mod inject;
 mod base_types;
