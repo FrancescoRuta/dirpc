@@ -1,5 +1,5 @@
 use bytes::{BufMut, BytesMut};
-use dirpc::{context::{RequestArgDeserializer, ResponseSerializer, ServerContext}, export_types::typescript, server::ServerBuilder, GetTypeDescription};
+use dirpc::{context::{RequestArgDeserializer, ResponseSerializer, ServerContext}, export_types::typescript, inject::Inject, server::ServerBuilder, GetTypeDescription};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, GetTypeDescription)]
@@ -35,11 +35,13 @@ struct StringWrapper(String);
 #[derive(Serialize, Deserialize, GetTypeDescription)]
 struct T4 {}
 
-async fn extract_string(input: T0) -> String {
+async fn extract_string(_conn: DbConnection, input: T0) -> String {
     input.t1.0.string
 }
 
-struct Context;
+struct Context {
+    db_connection_pool: (),
+}
 
 impl ServerContext for Context {
     type Serializer = DataSerializer;
@@ -61,11 +63,26 @@ impl RequestArgDeserializer for DataDeserializer {
     }
 }
 
+struct DbConnection;
+impl GetTypeDescription for DbConnection {
+    fn get_type_description() -> dirpc::TypeDescription {
+        dirpc::TypeDescription::void()
+    }
+}
+impl<RequestState> Inject<Context, RequestState> for DbConnection {
+    const EXPORT_DEFINITION: bool = false;
+
+    fn inject(ctx: &Context, _request: &mut dirpc::request::Request<RequestState>) -> anyhow::Result<Self> {
+        let _db_connection_pool = ctx.db_connection_pool;
+        Ok(Self)
+    }
+}
+
 #[test]
 fn test1() {
     let mut server = ServerBuilder::<Context, ()>::new();
-    server.add_namespace("root").add_function("extract_string", ("input", ), extract_string);
+    server.add_namespace("root").add_function("extract_string", ("conn", "input", ), extract_string);
     let descr = server.get_descr();
-    server.build(Context).unwrap();
+    server.build(Context { db_connection_pool: () }).unwrap();
     panic!("{}", typescript::get_code("TestApp", descr).unwrap());
 }

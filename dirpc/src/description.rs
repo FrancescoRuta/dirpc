@@ -43,6 +43,16 @@ pub struct TypeDescription {
     pub typeinfo: TypeInfo,
 }
 
+impl TypeDescription {
+    pub fn void() -> Self {
+        TypeDescription {
+            module_path: String::new(),
+            name: String::new(),
+            typeinfo: TypeInfo::BaseType(BaseTypeDescription::Void),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionDescription {
     pub args_types: Vec<(bool, String, TypeDescription)>,

@@ -28,7 +28,7 @@ where
 
 impl<Context, RequestState, T> Inject<Context, RequestState> for Json<T>
 where
-    T: for<'de> serde::Deserialize<'de>,
+    T: for<'de> serde::Deserialize<'de> + GetTypeDescription,
 {
     const EXPORT_DEFINITION: bool = true;
     fn inject(_ctx: &Context, request: &mut Request<RequestState>) -> anyhow::Result<Self> {

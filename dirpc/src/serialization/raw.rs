@@ -1,4 +1,4 @@
-use crate::{base_types::{DeserializeFromBytes, SerializationHelper, SerializeToBytes}, inject::Inject, request::Request};
+use crate::{base_types::{DeserializeFromBytes, SerializationHelper, SerializeToBytes}, inject::Inject, request::Request, GetTypeDescription};
 
 pub struct RawSerializer<T>(pub T);
 
@@ -8,9 +8,18 @@ impl<T> From<T> for RawSerializer<T> {
     }
 }
 
+impl<T> GetTypeDescription for RawSerializer<T>
+where
+    T: GetTypeDescription
+{
+    fn get_type_description() -> crate::TypeDescription {
+        T::get_type_description()
+    }
+}
+
 impl<Context, RequestState, T> Inject<Context, RequestState> for RawSerializer<T>
 where
-    T: DeserializeFromBytes,
+    T: DeserializeFromBytes + GetTypeDescription,
 {
     const EXPORT_DEFINITION: bool = true;
     fn inject(_ctx: &Context, request: &mut Request<RequestState>) -> anyhow::Result<Self> {
