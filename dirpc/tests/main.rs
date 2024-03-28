@@ -1,43 +1,71 @@
-use dirpc::{export_types::typescript, server::ServerBuilder, DeserializeFromBytes, GetTypeDescription, SerializeToBytes};
+use bytes::{BufMut, BytesMut};
+use dirpc::{context::{RequestArgDeserializer, ResponseSerializer, ServerContext}, export_types::typescript, server::ServerBuilder, GetTypeDescription};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[derive(SerializeToBytes, DeserializeFromBytes, GetTypeDescription)]
+#[derive(Serialize, Deserialize, GetTypeDescription)]
 struct T0 {
     t1: T1,
     t2_custom: nested_module_test::T2,
     number: f32,
 }
 
-#[derive(SerializeToBytes, DeserializeFromBytes, GetTypeDescription)]
+#[derive(Serialize, Deserialize, GetTypeDescription)]
 struct T1(T3, T4);
 
 mod nested_module_test {
-    use dirpc::{DeserializeFromBytes, GetTypeDescription, SerializeToBytes};
+    use dirpc::GetTypeDescription;
+    use serde::{Deserialize, Serialize};
 
     use crate::T3;
 
         
-    #[derive(SerializeToBytes, DeserializeFromBytes, GetTypeDescription)]
+    #[derive(Serialize, Deserialize, GetTypeDescription)]
     pub struct T2(T3);
 }
 
-#[derive(SerializeToBytes, DeserializeFromBytes, GetTypeDescription)]
+#[derive(Serialize, Deserialize, GetTypeDescription)]
 struct T3 {
     number: f32,
     string: String,
 }
 
-#[derive(SerializeToBytes, DeserializeFromBytes, GetTypeDescription)]
+#[derive(Serialize, Deserialize, GetTypeDescription)]
+struct StringWrapper(String);
+
+#[derive(Serialize, Deserialize, GetTypeDescription)]
 struct T4 {}
 
 async fn extract_string(input: T0) -> String {
     input.t1.0.string
 }
 
+struct Context;
+
+impl ServerContext for Context {
+    type Serializer = DataSerializer;
+    type Deserializer = DataDeserializer;
+}
+
+struct DataSerializer;
+impl ResponseSerializer for DataSerializer {
+    fn serialize<T: Serialize>(data: T) -> anyhow::Result<bytes::Bytes> {
+        let mut writer = BytesMut::new();
+        serde_json::to_writer((&mut writer).writer(), &data)?;
+        Ok(writer.freeze())
+    }
+}
+struct DataDeserializer;
+impl RequestArgDeserializer for DataDeserializer {
+    fn deserialize<T: DeserializeOwned>(data: bytes::Bytes) -> anyhow::Result<T> {
+        Ok(serde_json::from_slice(&data)?)
+    }
+}
+
 #[test]
 fn test1() {
-    let mut server = ServerBuilder::<(), ()>::new();
+    let mut server = ServerBuilder::<Context, ()>::new();
     server.add_namespace("root").add_function("extract_string", ("input", ), extract_string);
     let descr = server.get_descr();
-    server.build(());
+    server.build(Context).unwrap();
     panic!("{}", typescript::get_code("TestApp", descr).unwrap());
 }

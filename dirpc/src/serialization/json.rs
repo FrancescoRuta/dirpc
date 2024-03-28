@@ -1,4 +1,4 @@
-use crate::base_types::{SerializeToBytes, DeserializeFromBytes, SerializationHelper};
+use crate::{base_types::{DeserializeFromBytes, SerializationHelper, SerializeToBytes}, inject::Inject, request::Request, GetTypeDescription};
 
 pub struct Json<T>(pub T);
 
@@ -23,5 +23,24 @@ where
     #[inline]
     fn deserialize_from_bytes(data: &mut bytes::Bytes) -> anyhow::Result<Self> {
         Ok(Json(serde_json::from_slice(&*bytes::Bytes::deserialize_from_bytes(data)?)?))
+    }
+}
+
+impl<Context, RequestState, T> Inject<Context, RequestState> for Json<T>
+where
+    T: for<'de> serde::Deserialize<'de>,
+{
+    const EXPORT_DEFINITION: bool = true;
+    fn inject(_ctx: &Context, request: &mut Request<RequestState>) -> anyhow::Result<Self> {
+        Ok(Json(serde_json::from_slice(&*bytes::Bytes::deserialize_from_bytes(&mut request.data)?)?))
+    }
+}
+
+impl<T> GetTypeDescription for Json<T>
+where
+    T: GetTypeDescription
+{
+    fn get_type_description() -> crate::TypeDescription {
+        T::get_type_description()
     }
 }

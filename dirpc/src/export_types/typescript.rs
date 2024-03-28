@@ -207,14 +207,15 @@ fn types_to_camel_case(ty: &mut TypeDescription) {
 pub fn get_code(main_namespace: &str, mut server_description: ServerDescription) -> anyhow::Result<String> {
     let typename_prefix = format!("{main_namespace}Types");
     for (_, (_ , f)) in &mut server_description.functions {
-        f.args_types.iter_mut().for_each(|(_, ty)| types_to_camel_case(ty));
+        f.args_types.retain(|(v, _, _)| *v);
+        f.args_types.iter_mut().for_each(|(_, _, ty)| types_to_camel_case(ty));
         types_to_camel_case(&mut f.return_type);
     }
     let mut functions: HashMap<Vec<String>, (&String, &FunctionDescription)> = HashMap::new();
     let mut types: HashMap<Vec<String>, &TypeDescription> = HashMap::new();
     let mut types_stack = Vec::new();
     for (path, (_, function)) in &server_description.functions {
-        types_stack.extend(function.args_types.iter().map(|(_, t)| t));
+        types_stack.extend(function.args_types.iter().map(|(_, _, t)| t));
         types_stack.push(&function.return_type);
         functions.insert(path.split("::").map(|s| to_camelcase(s)).collect(), (path, function));
     }
@@ -250,7 +251,7 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
                 res.push_str(&name[1..]);
             }
             res.push('(');
-            for (arg_name, arg_type) in &el.args_types {
+            for (_, arg_name, arg_type) in &el.args_types {
                 res.push_str(&arg_name);
                 res.push(':');
                 serialize_type(arg_type, res, true, &typename_prefix);
@@ -278,7 +279,7 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
                 res.push_str(&name[1..]);
             }
             res.push_str(":(function(_fn_index_:number){return function(");
-            for (arg_name, arg_type) in &el.args_types {
+            for (_, arg_name, arg_type) in &el.args_types {
                 res.push_str(&arg_name);
                 res.push(':');
                 serialize_type(arg_type, res, true, &typename_prefix);
@@ -287,7 +288,7 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
             res.push_str("):FunctionCall<");
             serialize_type(&el.return_type, res, true, &typename_prefix);
             res.push_str(">{return({id:_fn_index_,args:[");
-            for (arg_name, _) in &el.args_types {
+            for (_, arg_name, _) in &el.args_types {
                 res.push_str(&arg_name);
                 res.push(',');
             }

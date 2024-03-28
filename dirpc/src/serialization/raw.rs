@@ -1,10 +1,20 @@
-use crate::base_types::{SerializeToBytes, DeserializeFromBytes, SerializationHelper};
+use crate::{base_types::{DeserializeFromBytes, SerializationHelper, SerializeToBytes}, inject::Inject, request::Request};
 
 pub struct RawSerializer<T>(pub T);
 
 impl<T> From<T> for RawSerializer<T> {
     fn from(value: T) -> Self {
         Self(value)
+    }
+}
+
+impl<Context, RequestState, T> Inject<Context, RequestState> for RawSerializer<T>
+where
+    T: DeserializeFromBytes,
+{
+    const EXPORT_DEFINITION: bool = true;
+    fn inject(_ctx: &Context, request: &mut Request<RequestState>) -> anyhow::Result<Self> {
+        Ok(RawSerializer(T::deserialize_from_bytes(&mut request.data)?))
     }
 }
 

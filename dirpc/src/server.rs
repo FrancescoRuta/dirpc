@@ -1,6 +1,6 @@
 use bytes::Buf;
 
-use crate::{dyn_fn::{DynFunction, IntoDynFunction}, request::Request, FunctionDescription, SerializationHelper, SerializeToBytes, ServerDescription};
+use crate::{context::{ResponseSerializer, ServerContext}, dyn_fn::{DynFunction, IntoDynFunction}, request::Request, FunctionDescription, ServerDescription};
 
 pub struct Server<Context, RequestState> {
     ctx: Context,
@@ -12,7 +12,7 @@ where
     Context: Sync,
     RequestState: Clone,
 {
-    pub fn call<Fut: std::future::Future<Output = ()> + Send + Sync>(&self, state: RequestState, mut req_data: bytes::Bytes, send_response: impl FnOnce(Vec<Vec<bytes::Bytes>>) -> Fut + Send + Sync + 'static) -> impl std::future::Future<Output = ()> + Send + Sync + 'static {
+    pub fn call<Fut: std::future::Future<Output = ()> + Send + Sync>(&self, state: RequestState, mut req_data: bytes::Bytes, send_response: impl FnOnce(Vec<bytes::Bytes>) -> Fut + Send + Sync + 'static) -> impl std::future::Future<Output = ()> + Send + Sync + 'static {
         let mut futures = Vec::with_capacity(16);
         while req_data.len() > 0 && futures.len() < 16 {
             if req_data.len() < 8 {
@@ -49,7 +49,10 @@ pub struct ServerBuilder<Context, RequestState> {
     functions: Vec<(Vec<String>, FunctionDescription, DynFunction<Context, RequestState>)>,
 }
 
-impl<Context, RequestState> ServerBuilder<Context, RequestState> {
+impl<Context, RequestState> ServerBuilder<Context, RequestState>
+where
+    Context: ServerContext,
+{
     
     pub fn new() -> Self {
         Self {
@@ -70,22 +73,19 @@ impl<Context, RequestState> ServerBuilder<Context, RequestState> {
         }
     }
     
-    pub fn build(self, ctx: Context) -> Server<Context, RequestState> {
-        let descr = serde_json::to_string(&self.get_descr()).unwrap();
+    pub fn build(self, ctx: Context) -> anyhow::Result<Server<Context, RequestState>> {
+        let descr = serde_json::to_string(&self.get_descr())?;
+        let descr = <Context::Serializer as ResponseSerializer>::serialize(&descr)?;
         let mut functions: Vec<DynFunction<Context, RequestState>> = Vec::with_capacity(self.functions.len() + 1);
         functions.push(Box::new(move |_, _| {
             let descr = descr.clone();
-            Box::pin(async move {
-                let mut ser = SerializationHelper::new();
-                (&descr).serialize_to_bytes(&mut ser)?;
-                Ok(ser.chain)
-            })
+            Box::pin(async move {Ok(descr)})
         }));
         functions.extend(self.functions.into_iter().map(|(_, _, f)| f));
-        Server {
+        Ok(Server {
             ctx,
             functions,
-        }
+        })
     }
     
 }

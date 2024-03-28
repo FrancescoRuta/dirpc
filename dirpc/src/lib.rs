@@ -7,6 +7,8 @@ pub mod export_types {
     pub mod typescript;
 }
 
+pub mod context;
+
 pub mod description;
 pub mod inject;
 mod base_types;

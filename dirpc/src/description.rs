@@ -45,7 +45,7 @@ pub struct TypeDescription {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionDescription {
-    pub args_types: Vec<(String, TypeDescription)>,
+    pub args_types: Vec<(bool, String, TypeDescription)>,
     pub return_type: TypeDescription,
 }
 
