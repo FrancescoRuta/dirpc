@@ -1,13 +1,16 @@
+use std::marker::PhantomData;
+
 use bytes::Buf;
 
-use crate::{context::{ResponseSerializer, ServerContext}, dyn_fn::{DynFunction, IntoDynFunction}, request::Request, FunctionDescription, ServerDescription};
+use crate::{rpc_serde::{RpcDeserializer, RpcSerializer}, dyn_fn::{DynFunction, IntoDynFunction}, request::Request, FunctionDescription, ServerDescription};
 
-pub struct Server<Context, RequestState> {
+pub struct Server<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> {
     ctx: Context,
     functions: Vec<DynFunction<Context, RequestState>>,
+    _phantom_data: PhantomData<(Serializer, Deserializer)>,
 }
 
-impl<Context, RequestState> Server<Context, RequestState>
+impl<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> Server<Context, RequestState, Serializer, Deserializer>
 where
     Context: Sync,
     RequestState: Clone,
@@ -45,25 +48,17 @@ where
     }
 }
 
-pub struct ServerBuilder<Context, RequestState> {
+pub struct ServerBuilder<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> {
     functions: Vec<(Vec<String>, FunctionDescription, DynFunction<Context, RequestState>)>,
+    _phantom_data: PhantomData<(Serializer, Deserializer)>,
 }
 
-impl<Context, RequestState> ServerBuilder<Context, RequestState>
-where
-    Context: ServerContext,
-{
+impl<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> ServerBuilder<Context, RequestState, Serializer, Deserializer> {
     
     pub fn new() -> Self {
         Self {
             functions: Vec::new(),
-        }
-    }
-    
-    pub fn add_namespace<'n>(&'n mut self, name: impl Into<String>) -> ServerNamespace<'n, Context, RequestState> {
-        ServerNamespace {
-            path: vec![name.into()],
-            server: self,
+            _phantom_data: PhantomData,
         }
     }
     
@@ -73,9 +68,9 @@ where
         }
     }
     
-    pub fn build(self, ctx: Context) -> anyhow::Result<Server<Context, RequestState>> {
+    pub fn build(self, ctx: Context) -> anyhow::Result<Server<Context, RequestState, Serializer, Deserializer>> {
         let descr = serde_json::to_string(&self.get_descr())?;
-        let descr = <Context::Serializer as ResponseSerializer>::serialize(&descr)?;
+        let descr = Serializer::serialize(descr)?;
         let mut functions: Vec<DynFunction<Context, RequestState>> = Vec::with_capacity(self.functions.len() + 1);
         functions.push(Box::new(move |_, _| {
             let descr = descr.clone();
@@ -85,33 +80,74 @@ where
         Ok(Server {
             ctx,
             functions,
+            _phantom_data: PhantomData,
         })
     }
     
 }
 
-pub struct ServerNamespace<'a, Context, RequestState> {
-    server: &'a mut ServerBuilder<Context, RequestState>,
-    path: Vec<String>,
+impl<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> ServerAddFunctionality<Context, RequestState> for ServerBuilder<Context, RequestState, Serializer, Deserializer> {
+    fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
+    where
+        F: IntoDynFunction<Context, RequestState, PhantomGeneric>,
+    {
+        self.functions.push((vec![name.into()], F::get_type_description(args), IntoDynFunction::into_dyn_fn::<Serializer, Deserializer>(function)));
+    }
+    fn add_namespace<'n>(&'n mut self, name: impl Into<String>) -> impl ServerAddFunctionality<Context, RequestState> {
+        ServerNamespace {
+            path: vec![name.into()],
+            server: self,
+            _phantom_data: PhantomData,
+        }
+    }
 }
 
-impl<'a, Context, RequestState> ServerNamespace<'a, Context, RequestState> {
-    pub fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
+pub struct ServerNamespace<'a, Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> {
+    server: &'a mut ServerBuilder<Context, RequestState, Serializer, Deserializer>,
+    path: Vec<String>,
+    _phantom_data: PhantomData<(Serializer, Deserializer)>,
+}
+
+impl<'a, Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> ServerAddFunctionality<Context, RequestState> for ServerNamespace<'a, Context, RequestState, Serializer, Deserializer> {
+    fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
     where
         F: IntoDynFunction<Context, RequestState, PhantomGeneric>,
     {
         let mut path = Vec::with_capacity(self.path.len() + 1);
         path.extend_from_slice(&self.path);
         path.push(name.into());
-        self.server.functions.push((path, F::get_type_description(args), IntoDynFunction::into_dyn_fn(function)));
+        self.server.functions.push((path, F::get_type_description(args), IntoDynFunction::into_dyn_fn::<Serializer, Deserializer>(function)));
     }
-    pub fn add_namespace<'n>(&'n mut self, name: impl Into<String>) -> ServerNamespace<'n, Context, RequestState> {
+    fn add_namespace<'n>(&'n mut self, name: impl Into<String>) -> impl ServerAddFunctionality<Context, RequestState> {
         let mut path = Vec::with_capacity(self.path.len() + 1);
         path.extend_from_slice(&self.path);
         path.push(name.into());
         ServerNamespace {
             path,
             server: self.server,
+            _phantom_data: PhantomData,
         }
+    }
+}
+
+pub trait ServerAddFunctionality<Context, RequestState> {
+    fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
+    where
+        F: IntoDynFunction<Context, RequestState, PhantomGeneric>;
+    fn add_namespace<'n>(&'n mut self, name: impl Into<String>) -> impl ServerAddFunctionality<Context, RequestState>;
+}
+
+impl<Context, RequestState, T> ServerAddFunctionality<Context, RequestState> for &mut T
+where
+    T: ServerAddFunctionality<Context, RequestState>,
+{
+    fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
+    where
+        F: IntoDynFunction<Context, RequestState, PhantomGeneric> {
+        T::add_function(self, name, args, function)
+    }
+
+    fn add_namespace<'n>(&'n mut self, name: impl Into<String>) -> impl ServerAddFunctionality<Context, RequestState> {
+        T::add_namespace(self, name)
     }
 }

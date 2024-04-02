@@ -280,7 +280,11 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
             }
             res.push_str(":(function(_fn_index_:number){return function(");
             for (_, arg_name, arg_type) in &el.args_types {
-                res.push_str(&arg_name);
+                let arg_name = to_camelcase(arg_name);
+                if let Some(first_char) = arg_name.chars().next() {
+                    res.push(first_char.to_ascii_lowercase());
+                    res.push_str(&arg_name[1..]);
+                }
                 res.push(':');
                 serialize_type(arg_type, res, true, &typename_prefix);
                 res.push(',');
@@ -289,7 +293,11 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
             serialize_type(&el.return_type, res, true, &typename_prefix);
             res.push_str(">{return({id:_fn_index_,args:[");
             for (_, arg_name, _) in &el.args_types {
-                res.push_str(&arg_name);
+                let arg_name = to_camelcase(arg_name);
+                if let Some(first_char) = arg_name.chars().next() {
+                    res.push(first_char.to_ascii_lowercase());
+                    res.push_str(&arg_name[1..]);
+                }
                 res.push(',');
             }
             res.push_str("]}as any)}})(d[\"");

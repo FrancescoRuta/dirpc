@@ -1,6 +1,7 @@
-use bytes::{BufMut, BytesMut};
-use dirpc::{context::{RequestArgDeserializer, ResponseSerializer, ServerContext}, export_types::typescript, inject::Inject, server::ServerBuilder, GetTypeDescription};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+use bytes::Bytes;
+use dirpc::{inject::Inject, publish, request_builder::RequestBuilder, rpc_serde::RpcDeserializer, serializers::json::{JsonDeserializer, JsonSerializer}, server::ServerBuilder, GetTypeDescription};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, GetTypeDescription)]
 struct T0 {
@@ -17,14 +18,13 @@ mod nested_module_test {
     use serde::{Deserialize, Serialize};
 
     use crate::T3;
-
-        
+    
     #[derive(Serialize, Deserialize, GetTypeDescription)]
-    pub struct T2(T3);
+    pub struct T2(pub T3);
 }
 
 #[derive(Serialize, Deserialize, GetTypeDescription)]
-struct T3 {
+pub struct T3 {
     number: f32,
     string: String,
 }
@@ -35,32 +35,8 @@ struct StringWrapper(String);
 #[derive(Serialize, Deserialize, GetTypeDescription)]
 struct T4 {}
 
-async fn extract_string(_conn: DbConnection, input: T0) -> String {
-    input.t1.0.string
-}
-
 struct Context {
     db_connection_pool: (),
-}
-
-impl ServerContext for Context {
-    type Serializer = DataSerializer;
-    type Deserializer = DataDeserializer;
-}
-
-struct DataSerializer;
-impl ResponseSerializer for DataSerializer {
-    fn serialize<T: Serialize>(data: T) -> anyhow::Result<bytes::Bytes> {
-        let mut writer = BytesMut::new();
-        serde_json::to_writer((&mut writer).writer(), &data)?;
-        Ok(writer.freeze())
-    }
-}
-struct DataDeserializer;
-impl RequestArgDeserializer for DataDeserializer {
-    fn deserialize<T: DeserializeOwned>(data: bytes::Bytes) -> anyhow::Result<T> {
-        Ok(serde_json::from_slice(&data)?)
-    }
 }
 
 struct DbConnection;
@@ -72,17 +48,78 @@ impl GetTypeDescription for DbConnection {
 impl<RequestState> Inject<Context, RequestState> for DbConnection {
     const EXPORT_DEFINITION: bool = false;
 
-    fn inject(ctx: &Context, _request: &mut dirpc::request::Request<RequestState>) -> anyhow::Result<Self> {
+    fn inject<D>(ctx: &Context, _request: &mut dirpc::request::Request<RequestState>) -> anyhow::Result<Self> {
         let _db_connection_pool = ctx.db_connection_pool;
         Ok(Self)
     }
 }
 
-#[test]
-fn test1() {
-    let mut server = ServerBuilder::<Context, ()>::new();
-    server.add_namespace("root").add_function("extract_string", ("conn", "input", ), extract_string);
-    let descr = server.get_descr();
-    server.build(Context { db_connection_pool: () }).unwrap();
-    panic!("{}", typescript::get_code("TestApp", descr).unwrap());
+
+async fn extract_string(_conn: DbConnection, input1: T0, input2: T0) -> String {
+    format!("{}.{}", input1.t1.0.string, input2.t1.0.string)
+}
+
+#[tokio::test]
+async fn test1() {
+    let mut server = ServerBuilder::<Context, (), JsonSerializer, JsonDeserializer>::new();
+    
+    publish! (server => {
+        extract_string(db, i1, i2);
+    });
+    
+    
+    let _descr = server.get_descr();
+    let server = server.build(Context { db_connection_pool: () }).unwrap();
+    
+    
+    struct Client {
+        connection_in: tokio::sync::mpsc::Receiver<bytes::Bytes>,
+        connection_out: tokio::sync::mpsc::Sender<bytes::Bytes>,
+    }
+    impl Client {
+        pub async fn extract_string(&mut self, input1: T0, input2: T0) -> anyhow::Result<String> {
+            let mut request: RequestBuilder<JsonSerializer> = RequestBuilder::new();
+            request.push_call(1, (input1, input2))?;
+            self.connection_out.send(request.build_request()).await?;
+            let response = self.connection_in.recv().await.ok_or_else(|| anyhow::anyhow!("Error"))?;
+            Ok(JsonDeserializer::deserialize(response)?)
+        }
+    } 
+    
+    let (server_in_tx, mut server_in_rx) = tokio::sync::mpsc::channel(3);
+    let (server_out_tx, server_out_rx) = tokio::sync::mpsc::channel(3);
+    
+    let mut client = Client { connection_in: server_out_rx, connection_out: server_in_tx };
+    
+    let server = tokio::spawn(async move {
+        while let Some(request) = server_in_rx.recv().await {
+            let server_out_tx = server_out_tx.clone();
+            server.call((), request, move |response| async move {
+                server_out_tx.send(Bytes::from(response.concat())).await.unwrap();
+            }).await;
+        }
+    });
+    
+    assert_eq!(client.extract_string(T0 {
+        number: 0.0,
+        t1: T1(T3 { number: 0.0, string: String::from("test1") }, T4 {  }),
+        t2_custom: nested_module_test::T2(T3 { number: 0.0, string: String::from("A") }),
+    }, T0 {
+        number: 0.0,
+        t1: T1(T3 { number: 0.0, string: String::from("test2") }, T4 {  }),
+        t2_custom: nested_module_test::T2(T3 { number: 0.0, string: String::from("B") }),
+    }).await.unwrap(), "test1.test2");
+    
+    assert_ne!(client.extract_string(T0 {
+        number: 0.0,
+        t1: T1(T3 { number: 0.0, string: String::from("test1") }, T4 {  }),
+        t2_custom: nested_module_test::T2(T3 { number: 0.0, string: String::from("A") }),
+    }, T0 {
+        number: 0.0,
+        t1: T1(T3 { number: 0.0, string: String::from("test2") }, T4 {  }),
+        t2_custom: nested_module_test::T2(T3 { number: 0.0, string: String::from("B") }),
+    }).await.unwrap(), "test1.test21");
+    
+    server.abort();
+    
 }
