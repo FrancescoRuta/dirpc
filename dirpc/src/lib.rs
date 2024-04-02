@@ -25,3 +25,5 @@ pub use base_types::*;
 pub use description::*;
 
 mod publish;
+
+pub use serde;
