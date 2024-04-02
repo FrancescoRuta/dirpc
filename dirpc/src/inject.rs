@@ -18,6 +18,6 @@ where
         if size > request.data.len() { anyhow::bail!("Deserialization error: expected {} bytes, but only {} found", size, request.data.len()); }
         let result = request.data.slice(..size);
         request.data.advance(size);
-        Ok(serde_json::from_slice(&result)?)
+        Ok(Deserializer::deserialize(result)?)
     }
 }

@@ -2,6 +2,7 @@ pub mod export_types {
     pub mod typescript;
 }
 pub mod serializers {
+    pub mod flexbuffers;
     pub mod json;
 }
 

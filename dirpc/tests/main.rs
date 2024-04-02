@@ -1,6 +1,6 @@
 
 use bytes::Bytes;
-use dirpc::{inject::Inject, publish, request_builder::RequestBuilder, rpc_serde::RpcDeserializer, serializers::json::{JsonDeserializer, JsonSerializer}, server::ServerBuilder, GetTypeDescription};
+use dirpc::{inject::Inject, publish, request_builder::RequestBuilder, rpc_serde::RpcDeserializer, serializers::flexbuffers::{FlexbuffersDeserializer, FlexbuffersSerializer}, server::ServerBuilder, GetTypeDescription};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, GetTypeDescription)]
@@ -61,7 +61,7 @@ async fn extract_string(_conn: DbConnection, input1: T0, input2: T0) -> String {
 
 #[tokio::test]
 async fn test1() {
-    let mut server = ServerBuilder::<Context, (), JsonSerializer, JsonDeserializer>::new();
+    let mut server = ServerBuilder::<Context, (), FlexbuffersSerializer, FlexbuffersDeserializer>::new();
     
     publish! (server => {
         extract_string(db, i1, i2);
@@ -78,11 +78,11 @@ async fn test1() {
     }
     impl Client {
         pub async fn extract_string(&mut self, input1: T0, input2: T0) -> anyhow::Result<String> {
-            let mut request: RequestBuilder<JsonSerializer> = RequestBuilder::new();
+            let mut request: RequestBuilder<FlexbuffersSerializer> = RequestBuilder::new();
             request.push_call(1, (input1, input2))?;
             self.connection_out.send(request.build_request()).await?;
             let response = self.connection_in.recv().await.ok_or_else(|| anyhow::anyhow!("Error"))?;
-            Ok(JsonDeserializer::deserialize(response)?)
+            Ok(FlexbuffersDeserializer::deserialize(response)?)
         }
     } 
     

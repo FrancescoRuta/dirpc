@@ -9,6 +9,7 @@ edition = "2021"
 dirpc_proc_macro = { path = "../dirpc_proc_macro" }
 serde = { version = "1", features = ["derive"]}
 serde_json = "1.0"
+flexbuffers = "2.0"
 bytes = "1.5"
 tokio = { version = "1", features = ["full"]}
 anyhow = "1"
