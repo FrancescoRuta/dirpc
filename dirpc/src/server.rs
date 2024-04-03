@@ -64,7 +64,7 @@ impl<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserial
     
     pub fn get_descr(&self) -> ServerDescription {
         ServerDescription {
-            functions: self.functions.iter().enumerate().map(|(index, (p, f, _))| (p.join("::"), (index as u32, f.clone()))).collect(),
+            functions: self.functions.iter().enumerate().map(|(index, (p, f, _))| (p.join("::"), (index as u32 + 1, f.clone()))).collect(),
         }
     }
     
