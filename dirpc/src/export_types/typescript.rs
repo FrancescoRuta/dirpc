@@ -302,8 +302,8 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
             }
             res.push_str("]}as any)}})(d[\"");
             res.push_str(&path);
-            res.push_str("\"]),");
+            res.push_str("\"][0]),");
         },
     );
-    Ok(format!("class FunctionCall<R>{{public id:number=null!;public args:any[]=null!;private typeCheck:R=null!;}};export declare namespace {typename_prefix}{{{types}}}export interface {main_namespace}{{{function_interface}}}function init{main_namespace}(data:string):{main_namespace}{{let d=JSON.parse(data).functions;return{{{function_initialization}}};}}"))
+    Ok(format!("interface FunctionCall<R>{{id:number;args:any[];__typeCheck__?:R;}}export declare namespace {typename_prefix}{{{types}}}export interface {main_namespace}{{{function_interface}}}export function init{main_namespace}(data:string):{main_namespace}{{let d=JSON.parse(data).functions;return{{{function_initialization}}};}}"))
 }
