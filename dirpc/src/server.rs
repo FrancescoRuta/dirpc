@@ -15,7 +15,7 @@ where
     Context: Sync,
     RequestState: Clone,
 {
-    pub fn call<Fut: std::future::Future<Output = ()> + Send + Sync>(&self, state: RequestState, mut req_data: bytes::Bytes, send_response: impl FnOnce(Vec<bytes::Bytes>) -> Fut + Send + Sync + 'static) -> impl std::future::Future<Output = ()> + Send + Sync + 'static {
+    pub fn call<Fut: std::future::Future<Output = ()> + Send>(&self, state: RequestState, mut req_data: bytes::Bytes, send_response: impl FnOnce(Vec<bytes::Bytes>) -> Fut + Send + Sync + 'static) -> impl std::future::Future<Output = ()> + Send + 'static {
         let mut futures = Vec::with_capacity(16);
         while req_data.len() > 0 && futures.len() < 16 {
             if req_data.len() < 8 {

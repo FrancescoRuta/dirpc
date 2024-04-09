@@ -1,6 +1,6 @@
 use crate::{rpc_serde::{RpcDeserializer, RpcSerializer}, description::{FunctionDescription, GetTypeDescription}, for_all_functions, request::Request};
 
-pub type DynFunction<Context, RequestState> = Box<dyn Fn(&Context, Request<RequestState>) -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<bytes::Bytes>> + Send + Sync>> + Send + Sync>;
+pub type DynFunction<Context, RequestState> = Box<dyn Fn(&Context, Request<RequestState>) -> std::pin::Pin<Box<dyn std::future::Future<Output = anyhow::Result<bytes::Bytes>> + Send>> + Send + Sync>;
 
 pub trait IntoDynFunction<Context, RequestState, PhantomGeneric> {
     type NameTuple;
@@ -33,7 +33,7 @@ where
 */
 impl<Context, RequestState, Fut, R, E, F> IntoDynFunction<Context, RequestState, ((R, E), )> for F
 where
-    Fut: std::future::Future<Output = Result<R, E>> + Send + Sync + 'static,
+    Fut: std::future::Future<Output = Result<R, E>> + Send + 'static,
     R: serde::Serialize + GetTypeDescription,
     E: ToString,
     F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
@@ -97,8 +97,8 @@ macro_rules! dyn_fn_impl {
         }*/
         impl<Context, RequestState, $($t,)* Fut, R, E, F, StrType> IntoDynFunction<Context, RequestState, (($($t,)* R, E), StrType)> for F
         where
-            $($t: $crate::inject::Inject<Context, RequestState> + GetTypeDescription + Send + Sync + 'static,)*
-            Fut: std::future::Future<Output = Result<R, E>> + Send + Sync + 'static,
+            $($t: $crate::inject::Inject<Context, RequestState> + GetTypeDescription + Send + 'static,)*
+            Fut: std::future::Future<Output = Result<R, E>> + Send + 'static,
             R: serde::Serialize + GetTypeDescription,
             E: ToString,
             F: FnOnce($($t,)*) -> Fut + Clone + Send + Sync + 'static,
