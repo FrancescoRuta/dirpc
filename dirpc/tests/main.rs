@@ -1,4 +1,5 @@
 
+use anyhow::Result;
 use bytes::Bytes;
 use dirpc::{inject::Inject, publish, request_builder::RequestBuilder, rpc_serde::RpcDeserializer, serializers::flexbuffers::{FlexbuffersDeserializer, FlexbuffersSerializer}, server::ServerBuilder, GetTypeDescription};
 use serde::{Deserialize, Serialize};
@@ -55,8 +56,8 @@ impl<RequestState> Inject<Context, RequestState> for DbConnection {
 }
 
 
-async fn extract_string(_conn: DbConnection, input1: T0, input2: T0) -> String {
-    format!("{}.{}", input1.t1.0.string, input2.t1.0.string)
+async fn extract_string(_conn: DbConnection, input1: T0, input2: T0) -> Result<String> {
+    Ok(format!("{}.{}", input1.t1.0.string, input2.t1.0.string))
 }
 
 #[tokio::test]

@@ -35,7 +35,7 @@ impl<Context, RequestState, Fut, R, E, F> IntoDynFunction<Context, RequestState,
 where
     Fut: std::future::Future<Output = Result<R, E>> + Send + Sync + 'static,
     R: serde::Serialize + GetTypeDescription,
-    E: std::error::Error,
+    E: ToString,
     F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
 {
     type NameTuple = ();
@@ -100,7 +100,7 @@ macro_rules! dyn_fn_impl {
             $($t: $crate::inject::Inject<Context, RequestState> + GetTypeDescription + Send + Sync + 'static,)*
             Fut: std::future::Future<Output = Result<R, E>> + Send + Sync + 'static,
             R: serde::Serialize + GetTypeDescription,
-            E: std::error::Error,
+            E: ToString,
             F: FnOnce($($t,)*) -> Fut + Clone + Send + Sync + 'static,
             StrType: Into<String>,
         {
