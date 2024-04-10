@@ -39,7 +39,13 @@ where
                     Ok(r) => results.push(r),
                     Err(error) => {
                         eprintln!("ERROR: {error}");
-                        return;
+                        match Serializer::serialize(((), error.to_string())) {
+                            Ok(v) => results.push(v),
+                            Err(e) => {
+                                eprintln!("SERIALIZATION ERROR: {e}");
+                            }
+                        }
+                        
                     },
                 }
             }
