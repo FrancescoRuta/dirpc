@@ -76,7 +76,7 @@ impl<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserial
     
     pub fn build(self, ctx: Context) -> anyhow::Result<Server<Context, RequestState, Serializer, Deserializer>> {
         let descr = serde_json::to_string(&self.get_descr())?;
-        let descr = Serializer::serialize(Ok::<_, ()>(descr))?;
+        let descr = Serializer::serialize((descr, ()))?;
         let mut functions: Vec<DynFunction<Context, RequestState>> = Vec::with_capacity(self.functions.len() + 1);
         functions.push(Box::new(move |_, _| {
             let descr = descr.clone();
