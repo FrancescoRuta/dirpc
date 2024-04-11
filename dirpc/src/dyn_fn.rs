@@ -75,7 +75,7 @@ macro_rules! dyn_fn_impl {
                 #[allow(non_snake_case)]
                 let ($($t,)*) = names;
                 FunctionDescription {
-                    args_types: vec![$(($t::EXPORT_DEFINITION, $t.into(), $t::get_type_description()),)*],
+                    args_types: vec![$(($t::EXPORT_DEFINITION, $t.into(), <$t as $crate::inject::Inject<_, _>>::get_type_description()),)*],
                     return_type: R::get_type_description(),
                 }
             }

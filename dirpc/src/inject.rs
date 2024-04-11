@@ -1,11 +1,14 @@
 use bytes::Buf;
 use serde::de::DeserializeOwned;
 
-use crate::{rpc_serde::RpcDeserializer, request::Request, GetTypeDescription};
+use crate::{request::Request, rpc_serde::RpcDeserializer, GetTypeDescription, TypeDescription};
 
-pub trait Inject<Context, RequestState> where Self: Sized + GetTypeDescription {
-    const EXPORT_DEFINITION: bool;
+pub trait Inject<Context, RequestState> where Self: Sized {
+    const EXPORT_DEFINITION: bool = false;
     fn inject<Deserializer: RpcDeserializer>(ctx: &Context, request: &mut Request<RequestState>) -> anyhow::Result<Self>;
+    fn get_type_description() -> TypeDescription {
+        TypeDescription::void()
+    }
 }
 
 impl<'de, Context, RequestState, T> Inject<Context, RequestState> for T
@@ -19,5 +22,8 @@ where
         let result = request.data.slice(..size);
         request.data.advance(size);
         Ok(Deserializer::deserialize(result)?)
+    }
+    fn get_type_description() -> TypeDescription {
+        <Self as GetTypeDescription>::get_type_description()
     }
 }
