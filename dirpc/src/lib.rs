@@ -20,7 +20,7 @@ mod fake_variaddic;
 
 pub use anyhow;
 
-pub use dirpc_proc_macro::*;
+pub use dirpc_proc_macro::GetTypeDescription;
 pub use base_types::*;
 pub use description::*;
 
