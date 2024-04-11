@@ -68,6 +68,10 @@ async fn extract_string(_conn: DbConnection, input1: T0, input2: T0) -> Result<S
     Ok(format!("{}.{}", input1.t1.0.string, input2.t1.0.string))
 }
 
+async fn test() -> Result<String> {
+    Ok(format!(""))
+}
+
 #[tokio::test]
 async fn test1() {
     let mut server =
@@ -75,6 +79,7 @@ async fn test1() {
 
     publish! (server => {
         extract_string(i1, i2);
+        test();
     });
     
 

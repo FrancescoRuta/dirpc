@@ -25,7 +25,7 @@ pub fn dyn_fn_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 		let name_tuple = cl_build.last().unwrap();
 		quote_spanned! {
 			span =>
-			impl<Context, RequestState, #(#t,)* Fut, R, E, F, StrType> IntoDynFunction<Context, RequestState, ((#(#t,)* R, E), StrType)> for F
+			impl<Context, RequestState, #(#t,)* Fut, R, E, F, StrType> IntoDynFunction<Context, RequestState, (#(#t,)* R, E), StrType> for F
 			where
 				#(#t: inject::Inject<Context, RequestState> + Send + 'static,)*
 				Fut: std::future::Future<Output = Result<R, E>> + Send + 'static,
