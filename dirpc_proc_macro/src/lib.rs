@@ -19,7 +19,8 @@ pub fn dyn_fn_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 		cl_build.push(quote_spanned! {span => ((), T0::TExportDefinition)});
 		for i in 1..n {
 			let prev = &cl_build[i - 1];
-			cl_build.push(quote_spanned! {span => (<#prev as GetTupleForExport<StrType>>::Result, T1::TExportDefinition)});
+			let t = syn::Ident::new(&format!("T{i}"), number.span());
+			cl_build.push(quote_spanned! {span => (<#prev as GetTupleForExport<StrType>>::Result, #t::TExportDefinition)});
 		}
 		let name_tuple = cl_build.last().unwrap();
 		quote_spanned! {
