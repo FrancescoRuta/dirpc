@@ -93,7 +93,7 @@ impl<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserial
 }
 
 impl<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> ServerAddFunctionality<Context, RequestState> for ServerBuilder<Context, RequestState, Serializer, Deserializer> {
-    fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
+    fn add_function<F, PhantomGeneric>(&mut self, name: F::IntoStringType, args: F::NameTuple, function: F)
     where
         F: IntoDynFunction<Context, RequestState, PhantomGeneric>,
     {
@@ -115,7 +115,7 @@ pub struct ServerNamespace<'a, Context, RequestState, Serializer: RpcSerializer,
 }
 
 impl<'a, Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserializer> ServerAddFunctionality<Context, RequestState> for ServerNamespace<'a, Context, RequestState, Serializer, Deserializer> {
-    fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
+    fn add_function<F, PhantomGeneric>(&mut self, name: F::IntoStringType, args: F::NameTuple, function: F)
     where
         F: IntoDynFunction<Context, RequestState, PhantomGeneric>,
     {
@@ -137,7 +137,7 @@ impl<'a, Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDese
 }
 
 pub trait ServerAddFunctionality<Context, RequestState> {
-    fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
+    fn add_function<F, PhantomGeneric>(&mut self, name: F::IntoStringType, args: F::NameTuple, function: F)
     where
         F: IntoDynFunction<Context, RequestState, PhantomGeneric>;
     fn add_namespace<'n>(&'n mut self, name: impl Into<String>) -> impl ServerAddFunctionality<Context, RequestState>;
@@ -147,7 +147,7 @@ impl<Context, RequestState, T> ServerAddFunctionality<Context, RequestState> for
 where
     T: ServerAddFunctionality<Context, RequestState>,
 {
-    fn add_function<F, PhantomGeneric>(&mut self, name: impl Into<String>, args: F::NameTuple, function: F)
+    fn add_function<F, PhantomGeneric>(&mut self, name: F::IntoStringType, args: F::NameTuple, function: F)
     where
         F: IntoDynFunction<Context, RequestState, PhantomGeneric> {
         T::add_function(self, name, args, function)
