@@ -37,6 +37,7 @@ pub fn dyn_fn_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 					#cl_build: GetTupleForExport<StrType>,
 				)*
 			{
+				type IntoStringType = StrType;
 				type NameTuple = <#name_tuple as GetTupleForExport<StrType>>::Result;
 				fn into_dyn_fn<Serializer: RpcSerializer, Deserializer: RpcDeserializer>(self) -> DynFunction<Context, RequestState> {
 					Box::new(move |ctx, mut req| {

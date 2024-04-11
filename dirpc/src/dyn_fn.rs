@@ -18,6 +18,7 @@ pub type DynFunction<Context, RequestState> = Box<
 >;
 
 pub trait IntoDynFunction<Context, RequestState, PhantomGeneric> {
+    type IntoStringType: Into<String>;
     type NameTuple;
     fn into_dyn_fn<Serializer: RpcSerializer, Deserializer: RpcDeserializer>(
         self,
@@ -32,6 +33,7 @@ where
     E: ToString,
     F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
 {
+    type IntoStringType = &'static str;
     type NameTuple = ();
     fn into_dyn_fn<Serializer: RpcSerializer, Deserializer: RpcDeserializer>(
         self,
