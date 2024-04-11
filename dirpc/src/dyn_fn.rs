@@ -17,7 +17,7 @@ pub type DynFunction<Context, RequestState> = Box<
         + Sync,
 >;
 
-pub trait IntoDynFunction<Context, RequestState, PhantomGeneric, StrType = &'static str> {
+pub trait IntoDynFunction<Context, RequestState, PhantomGeneric> {
     type NameTuple;
     fn into_dyn_fn<Serializer: RpcSerializer, Deserializer: RpcDeserializer>(
         self,
@@ -25,7 +25,7 @@ pub trait IntoDynFunction<Context, RequestState, PhantomGeneric, StrType = &'sta
     fn get_type_description(names: Self::NameTuple) -> FunctionDescription;
 }
 
-impl<Context, RequestState, Fut, R, E, F> IntoDynFunction<Context, RequestState, (R, E), ()> for F
+impl<Context, RequestState, Fut, R, E, F> IntoDynFunction<Context, RequestState, ((R, E),)> for F
 where
     Fut: std::future::Future<Output = Result<R, E>> + Send + 'static,
     R: serde::Serialize + GetTypeDescription,
