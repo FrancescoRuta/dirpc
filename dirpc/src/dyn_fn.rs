@@ -47,7 +47,7 @@ macro_rules! dyn_fn_impl {
     ( $( $t:ident $t_idx:ident; )* ) => {
         impl<Context, RequestState, $($t,)* Fut, R, E, F, StrType> IntoDynFunction<Context, RequestState, (($($t,)* R, E), StrType)> for F
         where
-            $($t: $crate::inject::Inject<Context, RequestState> + GetTypeDescription + Send + 'static,)*
+            $($t: $crate::inject::Inject<Context, RequestState> + Send + 'static,)*
             Fut: std::future::Future<Output = Result<R, E>> + Send + 'static,
             R: serde::Serialize + GetTypeDescription,
             E: ToString,
