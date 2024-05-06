@@ -68,8 +68,8 @@ macro_rules! concat_tuple {
     };
     (< $( $t:ident $t_idx:tt; )* ) => {
         impl<T: Into<String>> ToArgsDescription for ($( make_into_t!($t), )*) {
-            fn to_args_description<const SIZE: usize>(self, tys: [TypeDescription; SIZE]) -> Vec<(String, TypeDescription)> {
-                tys.into_iter().zip([$(self.$t_idx.into()),*].into_iter()).map(|(ty, name)| (name, ty)).collect()
+            fn to_args_description<const SIZE: usize>(self, tys: [(bool, TypeDescription); SIZE]) -> Vec<(String, TypeDescription)> {
+                tys.into_iter().filter(|(v, _)| *v).zip([$(self.$t_idx.into()),*].into_iter()).map(|((_, ty), name)| (name, ty)).collect()
             }
         }
     };
@@ -80,11 +80,11 @@ macro_rules! concat_tuple {
 }
 
 pub trait ToArgsDescription {
-    fn to_args_description<const SIZE: usize>(self, tys: [TypeDescription; SIZE]) -> Vec<(String, TypeDescription)>;
+    fn to_args_description<const SIZE: usize>(self, tys: [(bool, TypeDescription); SIZE]) -> Vec<(String, TypeDescription)>;
 }
 
 impl ToArgsDescription for () {
-    fn to_args_description<const SIZE: usize>(self, _: [TypeDescription; SIZE]) -> Vec<(String, TypeDescription)> {
+    fn to_args_description<const SIZE: usize>(self, _: [(bool, TypeDescription); SIZE]) -> Vec<(String, TypeDescription)> {
         Vec::new()
     }
 }

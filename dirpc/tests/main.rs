@@ -1,13 +1,7 @@
 use anyhow::Result;
 use bytes::Bytes;
 use dirpc::{
-    inject::{ExportDefinitionFalse, Inject},
-    publish,
-    request_builder::RequestBuilder,
-    rpc_serde::RpcDeserializer,
-    serializers::flexbuffers::{FlexbuffersDeserializer, FlexbuffersSerializer},
-    server::ServerBuilder,
-    GetTypeDescription,
+    export_types, inject::{ExportDefinitionFalse, Inject}, publish, request_builder::RequestBuilder, rpc_serde::RpcDeserializer, serializers::flexbuffers::{FlexbuffersDeserializer, FlexbuffersSerializer}, server::ServerBuilder, GetTypeDescription
 };
 use serde::{Deserialize, Serialize};
 
@@ -68,7 +62,7 @@ async fn extract_string(_conn: DbConnection, input1: T0, input2: T0) -> Result<S
     Ok(format!("{}.{}", input1.t1.0.string, input2.t1.0.string))
 }
 
-async fn test() -> Result<String> {
+async fn test(_page: u32) -> Result<String> {
     Ok(format!(""))
 }
 
@@ -79,16 +73,18 @@ async fn test1() {
 
     publish! (server => {
         extract_string(i1, i2);
-        test();
+        test(page);
     });
     
 
     let _descr = server.get_descr();
+    println!("{}", export_types::typescript::get_code("Test", server.get_descr()).unwrap());
     let server = server
         .build(Context {
             db_connection_pool: (),
         })
         .unwrap();
+    
 
     struct Client {
         connection_in: tokio::sync::mpsc::Receiver<bytes::Bytes>,

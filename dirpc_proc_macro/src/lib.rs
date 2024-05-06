@@ -59,7 +59,7 @@ pub fn dyn_fn_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 					FunctionDescription {
 						args_types: <Self::NameTuple as ToArgsDescription>::to_args_description(
 							names,
-							[#(<#t as inject::Inject<_, _>>::get_type_description(),)*]
+							[#((<<#t as inject::Inject<_, _>>::TExportDefinition as inject::ExportDefinition>::VALUE, <#t as inject::Inject<_, _>>::get_type_description()),)*]
 						),
 						return_type: R::get_type_description(),
 					}
