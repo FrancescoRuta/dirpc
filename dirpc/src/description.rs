@@ -27,7 +27,7 @@ pub enum BaseTypeDescription {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TypeInfo {
     BaseType(BaseTypeDescription),
-    Enum(HashMap<String, TypeDescription>),
+    Enum(Vec<(String, u32)>),
     Tuple(Vec<TypeDescription>),
     Option(Box<TypeDescription>),
     Result(Box<TypeDescription>),

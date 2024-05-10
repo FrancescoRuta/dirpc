@@ -80,7 +80,7 @@ fn get_all_types<'a>(mut stack: Vec<&'a TypeDescription>, types: &mut HashMap<Ve
         }
         match &t.typeinfo {
             TypeInfo::BaseType(_) => (),
-            TypeInfo::Enum(t) => { stack.extend(t.iter().map(|(_, t)| t)); }
+            TypeInfo::Enum(_) => (),
             TypeInfo::Tuple(t) => { stack.extend(t.iter()); }
             TypeInfo::Option(t) => { stack.push(&t); }
             TypeInfo::Result(t) => { stack.push(&t); }
@@ -169,9 +169,17 @@ fn serialize_type_declaration(name: &str, ty: &TypeDescription, result: &mut Str
                 result.push(';');
             }
             result.push('}');
-        } else if let TypeInfo::Enum(ty) = &ty.typeinfo {
-            let _ = ty;
-            todo!();
+        } else if let TypeInfo::Enum(variants) = &ty.typeinfo {
+            result.push_str("export enum ");
+            result.push_str(name);
+            result.push('{');
+            for (name, discriminant) in variants {
+                result.push_str(name);
+                result.push('=');
+                result.push_str(&discriminant.to_string());
+                result.push(',');
+            }
+            result.push('}');
         } else {
             serialize_type(ty, result, false, typename_prefix);
         }
@@ -194,7 +202,7 @@ fn types_to_camel_case(ty: &mut TypeDescription) {
     ty.name = to_camelcase(&ty.name);
     match &mut ty.typeinfo {
         TypeInfo::BaseType(_) => (),
-        TypeInfo::Enum(ty) => ty.iter_mut().for_each(|(_, ty)| types_to_camel_case(ty)),
+        TypeInfo::Enum(_) => (),
         TypeInfo::Tuple(ty) => ty.iter_mut().for_each(|ty| types_to_camel_case(ty)),
         TypeInfo::Option(ty) => types_to_camel_case(&mut *ty),
         TypeInfo::Result(ty) => types_to_camel_case(&mut *ty),
