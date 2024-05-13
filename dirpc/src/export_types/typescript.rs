@@ -169,6 +169,7 @@ fn serialize_type_declaration(name: &str, ty: &TypeDescription, result: &mut Str
                 result.push(';');
             }
             result.push('}');
+            result.push(';');
         } else if let TypeInfo::Enum(variants) = &ty.typeinfo {
             result.push_str("export enum ");
             result.push_str(name);
@@ -185,8 +186,8 @@ fn serialize_type_declaration(name: &str, ty: &TypeDescription, result: &mut Str
             result.push_str(name);
             result.push('=');
             serialize_type(ty, result, false, typename_prefix);
+            result.push(';');
         }
-        result.push(';');
     }
 }
 
