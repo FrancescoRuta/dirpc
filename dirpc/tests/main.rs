@@ -10,6 +10,14 @@ struct T0 {
     t1: T1,
     t2_custom: nested_module_test::T2,
     number: f32,
+    test_enum: TestEnum,
+}
+
+
+#[derive(Serialize, Deserialize, GetTypeDescription)]
+enum TestEnum {
+    Value0 = 0,
+    Value1 = 1,
 }
 
 #[derive(Serialize, Deserialize, GetTypeDescription)]
@@ -142,6 +150,7 @@ async fn test1() {
                         number: 0.0,
                         string: String::from("A")
                     }),
+                    test_enum: TestEnum::Value0,
                 },
                 T0 {
                     number: 0.0,
@@ -156,6 +165,7 @@ async fn test1() {
                         number: 0.0,
                         string: String::from("B")
                     }),
+                    test_enum: TestEnum::Value0,
                 }
             )
             .await
@@ -179,6 +189,7 @@ async fn test1() {
                         number: 0.0,
                         string: String::from("A")
                     }),
+                    test_enum: TestEnum::Value0,
                 },
                 T0 {
                     number: 0.0,
@@ -193,6 +204,7 @@ async fn test1() {
                         number: 0.0,
                         string: String::from("B")
                     }),
+                    test_enum: TestEnum::Value0,
                 }
             )
             .await

@@ -157,10 +157,10 @@ fn serialize_type(ty: &TypeDescription, result: &mut String, force_name_ref: boo
 
 fn serialize_type_declaration(name: &str, ty: &TypeDescription, result: &mut String, typename_prefix: &str) {
     if name != "" {
-        result.push_str("export type ");
-        result.push_str(name);
-        result.push('=');
         if let TypeInfo::Object(ty) = &ty.typeinfo {
+            result.push_str("export type ");
+            result.push_str(name);
+            result.push('=');
             result.push('{');
             for (name, a) in ty {
                 result.push_str(name);
@@ -181,6 +181,9 @@ fn serialize_type_declaration(name: &str, ty: &TypeDescription, result: &mut Str
             }
             result.push('}');
         } else {
+            result.push_str("export type ");
+            result.push_str(name);
+            result.push('=');
             serialize_type(ty, result, false, typename_prefix);
         }
         result.push(';');
@@ -212,22 +215,28 @@ fn types_to_camel_case(ty: &mut TypeDescription) {
     }
 }
 
+enum RuntimeItem<'a> {
+    Function(&'a String, &'a FunctionDescription),
+    Enum(TypeDescription, Vec<(String, u32)>),
+}
+
 pub fn get_code(main_namespace: &str, mut server_description: ServerDescription) -> anyhow::Result<String> {
     let typename_prefix = format!("{main_namespace}Types");
     for (_, (_ , f)) in &mut server_description.functions {
         f.args_types.iter_mut().for_each(|(_, ty)| types_to_camel_case(ty));
         types_to_camel_case(&mut f.return_type);
     }
-    let mut functions: HashMap<Vec<String>, (&String, &FunctionDescription)> = HashMap::new();
+    let mut runtime: HashMap<Vec<String>, RuntimeItem> = HashMap::new();
     let mut types: HashMap<Vec<String>, &TypeDescription> = HashMap::new();
     let mut types_stack = Vec::new();
     for (path, (_, function)) in &server_description.functions {
         types_stack.extend(function.args_types.iter().map(|(_, t)| t));
         types_stack.push(&function.return_type);
-        functions.insert(path.split("::").map(|s| to_camelcase(s)).collect(), (path, function));
+        runtime.insert(path.split("::").map(|s| to_camelcase(s)).collect(), RuntimeItem::Function(path, function));
     }
     get_all_types(types_stack, &mut types);
-    let functions = to_nested(functions)?;
+    runtime.extend(types.iter().filter_map(|(k, ty)| if let TypeInfo::Enum(variants) = &ty.typeinfo { Some((k.clone(), RuntimeItem::Enum((*ty).clone(), variants.clone()))) } else { None }));
+    let runtime = to_nested(runtime)?;
     let types = to_nested(types)?;
     let types = Node::to_string(&types,
         |name, res| {
@@ -242,7 +251,7 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
             serialize_type_declaration(name, el, res, &typename_prefix);
         },
     );
-    let function_interface = Node::to_string(&functions,
+    let runtime_interface = Node::to_string(&runtime,
         |name, res| {
             res.push_str(name);
             res.push(':');
@@ -252,25 +261,35 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
             res.push('}');
             res.push(';');
         },
-        |name, (_, el), res| {
-            if let Some(first_char) = name.chars().next() {
-                res.push(first_char.to_ascii_lowercase());
-                res.push_str(&name[1..]);
+        |name, item, res| {
+            match item {
+                RuntimeItem::Function(_, el) => {
+                    if let Some(first_char) = name.chars().next() {
+                        res.push(first_char.to_ascii_lowercase());
+                        res.push_str(&name[1..]);
+                    }
+                    res.push('(');
+                    for (arg_name, arg_type) in &el.args_types {
+                        res.push_str(&arg_name);
+                        res.push(':');
+                        serialize_type(arg_type, res, true, &typename_prefix);
+                        res.push(',');
+                    }
+                    res.push_str("):FunctionCall<");
+                    serialize_type(&el.return_type, res, true, &typename_prefix);
+                    res.push('>');
+                    res.push(';');
+                },
+                RuntimeItem::Enum(typedexcription, _) => {
+                    res.push_str(&name);
+                    res.push_str(":typeof ");
+                    serialize_type(typedexcription, res, true, &typename_prefix);
+                    res.push(';');
+                },
             }
-            res.push('(');
-            for (arg_name, arg_type) in &el.args_types {
-                res.push_str(&arg_name);
-                res.push(':');
-                serialize_type(arg_type, res, true, &typename_prefix);
-                res.push(',');
-            }
-            res.push_str("):FunctionCall<");
-            serialize_type(&el.return_type, res, true, &typename_prefix);
-            res.push('>');
-            res.push(';');
         },
     );
-    let function_initialization = Node::to_string(&functions,
+    let runtime_initialization = Node::to_string(&runtime,
         |name, res| {
             res.push_str(name);
             res.push(':');
@@ -280,37 +299,49 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
             res.push('}');
             res.push(',');
         },
-        |name, (path, el), res| {
-            if let Some(first_char) = name.chars().next() {
-                res.push(first_char.to_ascii_lowercase());
-                res.push_str(&name[1..]);
+        |name, item, res| {
+            match item {
+                RuntimeItem::Function(path, el) => {
+                    if let Some(first_char) = name.chars().next() {
+                        res.push(first_char.to_ascii_lowercase());
+                        res.push_str(&name[1..]);
+                    }
+                    res.push_str(":(function(_fn_index_:number){return function(");
+                    for (arg_name, arg_type) in &el.args_types {
+                        let arg_name = to_camelcase(arg_name);
+                        if let Some(first_char) = arg_name.chars().next() {
+                            res.push(first_char.to_ascii_lowercase());
+                            res.push_str(&arg_name[1..]);
+                        }
+                        res.push(':');
+                        serialize_type(arg_type, res, true, &typename_prefix);
+                        res.push(',');
+                    }
+                    res.push_str("):FunctionCall<");
+                    serialize_type(&el.return_type, res, true, &typename_prefix);
+                    res.push_str(">{return({id:_fn_index_,args:[");
+                    for (arg_name, _) in &el.args_types {
+                        let arg_name = to_camelcase(arg_name);
+                        if let Some(first_char) = arg_name.chars().next() {
+                            res.push(first_char.to_ascii_lowercase());
+                            res.push_str(&arg_name[1..]);
+                        }
+                        res.push(',');
+                    }
+                    res.push_str("]}as any)}})(d[\"");
+                    res.push_str(&path);
+                    res.push_str("\"][0]),");
+                },
+                RuntimeItem::Enum(_, variants) => {
+                    res.push_str(&name);
+                    res.push_str(":{");
+                    for (name, value) in variants {
+                        res.push_str(&format!("{name}:{value},"));
+                    }
+                    res.push_str("},");
+                },
             }
-            res.push_str(":(function(_fn_index_:number){return function(");
-            for (arg_name, arg_type) in &el.args_types {
-                let arg_name = to_camelcase(arg_name);
-                if let Some(first_char) = arg_name.chars().next() {
-                    res.push(first_char.to_ascii_lowercase());
-                    res.push_str(&arg_name[1..]);
-                }
-                res.push(':');
-                serialize_type(arg_type, res, true, &typename_prefix);
-                res.push(',');
-            }
-            res.push_str("):FunctionCall<");
-            serialize_type(&el.return_type, res, true, &typename_prefix);
-            res.push_str(">{return({id:_fn_index_,args:[");
-            for (arg_name, _) in &el.args_types {
-                let arg_name = to_camelcase(arg_name);
-                if let Some(first_char) = arg_name.chars().next() {
-                    res.push(first_char.to_ascii_lowercase());
-                    res.push_str(&arg_name[1..]);
-                }
-                res.push(',');
-            }
-            res.push_str("]}as any)}})(d[\"");
-            res.push_str(&path);
-            res.push_str("\"][0]),");
         },
     );
-    Ok(format!("interface FunctionCall<R>{{id:number;args:any[];__typeCheck__?:R;}}export declare namespace {typename_prefix}{{{types}}}export interface {main_namespace}{{{function_interface}}}export function init{main_namespace}(data:string):{main_namespace}{{let d=JSON.parse(data).functions;return{{{function_initialization}}};}}"))
+    Ok(format!("interface FunctionCall<R>{{id:number;args:any[];__typeCheck__?:R;}}export declare namespace {typename_prefix}{{{types}}}export interface {main_namespace}{{{runtime_interface}}}export function init{main_namespace}(data:string):{main_namespace}{{let d=JSON.parse(data).functions;return{{{runtime_initialization}}};}}"))
 }
