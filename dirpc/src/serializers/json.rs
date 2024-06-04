@@ -31,7 +31,14 @@ pub struct JsonDeserializer;
 impl RpcDeserializer for JsonDeserializer {
     #[inline]
     fn deserialize_unfallible<T: serde::de::DeserializeOwned>(data: bytes::Bytes) -> anyhow::Result<T> {
-        Ok(serde_json::from_slice(&data)?)
+        if cfg!(debug_assertions) {
+            match serde_json::from_slice(&data) {
+                Ok(data) => Ok(data),
+                Err(error) => Err(anyhow::anyhow!("JsonDeserializer error: {}; OriginalMessage: {:?}", error, std::str::from_utf8(&data))),
+            }
+        } else {
+            Ok(serde_json::from_slice(&data)?)
+        }
     }
     #[inline]
     fn deserialize<T: serde::de::DeserializeOwned>(mut data: bytes::Bytes) -> anyhow::Result<std::result::Result<T, String>> {
