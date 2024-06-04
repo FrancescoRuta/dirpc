@@ -108,7 +108,7 @@ async fn test1() {
                 .recv()
                 .await
                 .ok_or_else(|| anyhow::anyhow!("Error"))?;
-            Ok(FlexbuffersDeserializer::deserialize(response)?)
+            Ok(FlexbuffersDeserializer::deserialize(response)?.map_err(|e| anyhow::anyhow!("{e}"))?)
         }
     }
 

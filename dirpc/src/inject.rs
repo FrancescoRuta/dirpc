@@ -21,7 +21,7 @@ where
         if size > request.data.len() { anyhow::bail!("Deserialization error: expected {} bytes, but only {} found", size, request.data.len()); }
         let result = request.data.slice(..size);
         request.data.advance(size);
-        Ok(Deserializer::deserialize(result)?)
+        Ok(Deserializer::deserialize_unfallible(result)?)
     }
     fn get_type_description() -> TypeDescription {
         <Self as GetTypeDescription>::get_type_description()

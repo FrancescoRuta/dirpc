@@ -39,7 +39,7 @@ macro_rules! impl_for_tuple {
             fn append(self, v: &mut Vec<bytes::Bytes>) -> anyhow::Result<()> {
                 v.reserve(count!($( $t )*));
                 let ($( $t, )*) = self;
-                $( let $t = Serializer::serialize($t)?; )*
+                $( let $t = Serializer::serialize_unfallible($t)?; )*
                 $(
                     v.push(bytes::Bytes::copy_from_slice(&u32::to_be_bytes($t.len() as u32)));
                     v.push($t);

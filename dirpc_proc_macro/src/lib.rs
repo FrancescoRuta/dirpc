@@ -45,11 +45,11 @@ pub fn dyn_fn_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 						let function = self.clone();
 						Box::pin(async move {
 							match function(#(#t_idx?,)*).await {
-								Ok(v) => Serializer::serialize((v, ())),
+								Ok(v) => Serializer::serialize_ok::<R>(v),
 								Err(e) => {
 									let e = e.to_string();
 									eprintln!("ERROR: {e}");
-									Serializer::serialize(((), e))
+									Serializer::serialize_error::<R>(e)
 								},
 							}
 						})

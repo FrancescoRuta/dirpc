@@ -39,7 +39,7 @@ where
                     Ok(r) => results.push(r),
                     Err(error) => {
                         eprintln!("ERROR: {error}");
-                        match Serializer::serialize(((), error.to_string())) {
+                        match Serializer::serialize_error::<()>(error.to_string()) {
                             Ok(v) => results.push(v),
                             Err(e) => {
                                 eprintln!("SERIALIZATION ERROR: {e}");
@@ -76,7 +76,7 @@ impl<Context, RequestState, Serializer: RpcSerializer, Deserializer: RpcDeserial
     
     pub fn build(self, ctx: Context) -> anyhow::Result<Server<Context, RequestState, Serializer, Deserializer>> {
         let descr = serde_json::to_string(&self.get_descr())?;
-        let descr = Serializer::serialize((descr, ()))?;
+        let descr = Serializer::serialize_ok(descr)?;
         let mut functions: Vec<DynFunction<Context, RequestState>> = Vec::with_capacity(self.functions.len() + 1);
         functions.push(Box::new(move |_, _| {
             let descr = descr.clone();

@@ -42,11 +42,11 @@ where
             let function = self.clone();
             Box::pin(async move {
                 match function().await {
-                    Ok(v) => Serializer::serialize((v, ())),
+                    Ok(v) => Serializer::serialize_ok::<R>(v),
                     Err(e) => {
                         let e = e.to_string();
                         eprintln!("ERROR: {e}");
-                        Serializer::serialize(((), e))
+                        Serializer::serialize_error::<R>(e)
                     }
                 }
             })
