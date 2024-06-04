@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use anyhow::Context;
 use bytes::Buf;
 
 use crate::{rpc_serde::{RpcDeserializer, RpcSerializer}, dyn_fn::{DynFunction, IntoDynFunction}, request::Request, FunctionDescription, ServerDescription};
@@ -30,16 +31,17 @@ where
             }
             let data = req_data.slice(..size);
             req_data.advance(size);
-            futures.push((self.functions[index])(&self.ctx, Request { state: state.clone(), data }));
+            futures.push((index, (self.functions[index])(&self.ctx, Request { state: state.clone(), data })));
         }
         async move {
             let mut results = Vec::with_capacity(futures.len());
-            for future in futures {
-                match future.await {
+            for (index, future) in futures {
+                match future.await.with_context(|| format!("Function index: {index}")) {
                     Ok(r) => results.push(r),
                     Err(error) => {
+                        let error = error.to_string();
                         eprintln!("ERROR: {error}");
-                        match Serializer::serialize_error::<()>(error.to_string()) {
+                        match Serializer::serialize_error::<()>(format!("Error in F[{index}]: {error}")) {
                             Ok(v) => results.push(v),
                             Err(e) => {
                                 eprintln!("SERIALIZATION ERROR: {e}");
