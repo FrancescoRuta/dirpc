@@ -17,6 +17,9 @@ where
 {
     type TExportDefinition = ExportDefinitionTrue;
     fn inject<Deserializer: RpcDeserializer>(_ctx: &Context, request: &mut Request<RequestState>) -> anyhow::Result<Self> {
+        if request.data.len() < 4 {
+            anyhow::bail!("Unexpected end of message.");
+        }
         let size = request.data.get_u32() as usize;
         if size > request.data.len() { anyhow::bail!("Deserialization error: expected {} bytes, but only {} found", size, request.data.len()); }
         let result = request.data.slice(..size);
