@@ -320,7 +320,9 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
                     }
                     res.push_str("):FunctionCall<");
                     serialize_type(&el.return_type, res, true, &typename_prefix);
-                    res.push_str(">{return({id:_fn_index_,args:[");
+                    res.push_str(">{return({id:_fn_index_,fn:\"");
+                    res.push_str(&path);
+                    res.push_str("\",args:[");
                     for (arg_name, _) in &el.args_types {
                         let arg_name = to_camelcase(arg_name);
                         if let Some(first_char) = arg_name.chars().next() {
