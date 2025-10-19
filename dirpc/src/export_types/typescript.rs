@@ -346,5 +346,5 @@ pub fn get_code(main_namespace: &str, mut server_description: ServerDescription)
             }
         },
     );
-    Ok(format!("interface FunctionCall<R>{{id:number;args:any[];__typeCheck__?:R;}}export declare namespace {typename_prefix}{{{types}}}export interface {main_namespace}{{{runtime_interface}}}export function init{main_namespace}(data:string):{main_namespace}{{let d=JSON.parse(data).functions;return{{{runtime_initialization}}};}}"))
+    Ok(format!("interface FunctionCall<R>{{id:number;args:any[];fn:string;__typeCheck__?:R;}}export declare namespace {typename_prefix}{{{types}}}export interface {main_namespace}{{{runtime_interface}}}export function init{main_namespace}(data:string):{main_namespace}{{let d=JSON.parse(data).functions;return{{{runtime_initialization}}};}}"))
 }
