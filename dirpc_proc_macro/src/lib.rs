@@ -30,7 +30,7 @@ pub fn dyn_fn_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 				#(#t: inject::Inject<Context, RequestState> + Send + 'static,)*
 				Fut: std::future::Future<Output = Result<R, E>> + Send + 'static,
 				R: serde::Serialize + GetTypeDescription,
-				E: ToString,
+				E: std::fmt::Debug,
 				F: FnOnce(#(#t,)*) -> Fut + Clone + Send + Sync + 'static,
 				StrType: Into<String>,
 				#(
@@ -47,7 +47,7 @@ pub fn dyn_fn_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 							match function(#(#t_idx?,)*).await {
 								Ok(v) => Serializer::serialize_ok::<R>(v),
 								Err(e) => {
-									let e = e.to_string();
+									let e = format!("{:?}", e);
 									eprintln!("ERROR: {e}");
 									Serializer::serialize_error::<R>(e)
 								},
