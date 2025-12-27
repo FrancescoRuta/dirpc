@@ -131,10 +131,8 @@ impl <Context,RequestState,T0,T1,T2,Fut,R,E,F,StrType>IntoDynFunction<Context,Re
             let t0 = T0::inject:: <Deserializer>(ctx, &mut req);
             let t1 = T1::inject:: <Deserializer>(ctx, &mut req);
             let t2 = T2::inject:: <Deserializer>(ctx, &mut req);
-            t2.as_ref().inspect_err(|e| println!("0: {}", e.to_string()));
             let function = self.clone();
             Box::pin(async move {
-                t2.as_ref().inspect_err(|e| println!("1: {}", e.to_string()));
                 match function(t0? ,t1? ,t2? ,).await {
                     Ok(v) => Serializer::serialize_ok:: <R>(v),
                     Err(e) => {
@@ -144,8 +142,7 @@ impl <Context,RequestState,T0,T1,T2,Fut,R,E,F,StrType>IntoDynFunction<Context,Re
                         };
                         Serializer::serialize_error:: <R>(e)
                     },
-                
-                    }
+                }
             })
         })
     }

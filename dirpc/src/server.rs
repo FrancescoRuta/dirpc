@@ -36,7 +36,11 @@ where
         async move {
             let mut results = Vec::with_capacity(futures.len());
             for (index, future) in futures {
-                match future.await.with_context(|| format!("Function index: {index}")) {
+                let result = future.await;
+                if let Err(e) = &result {
+                    println!("ERR: {e}");
+                }
+                match result.with_context(|| format!("Function index: {index}")) {
                     Ok(r) => results.push(r),
                     Err(error) => {
                         let error = error.to_string();
